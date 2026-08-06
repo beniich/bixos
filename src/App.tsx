@@ -33,7 +33,7 @@ export function App() {
   const { user: firebaseUser, loading: authLoading, logout: firebaseLogout } = useAuth();
   const [activePage, setActivePage] = useState<PageId>('home');
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [language, setLanguage] = useState<Language>(() => {
     const savedLang = localStorage.getItem('bizos_lang');
     return (savedLang as Language) || 'EN';
@@ -64,24 +64,6 @@ export function App() {
       } catch {
         // ignore
       }
-    } else {
-      // Default demo Google user connected automatically
-      // NOTE: With Firebase integration, this fallback is kept for Demo purposes.
-      const demoUser: GoogleAuthUser = {
-        email: 'albertomodo.cc@gmail.com',
-        name: 'Alberto Modo',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        provider: 'GOOGLE_OAUTH',
-        scopesAuthorized: [
-          'https://www.googleapis.com/auth/userinfo.profile',
-          'https://www.googleapis.com/auth/userinfo.email',
-          'https://www.googleapis.com/auth/gmail.readonly',
-        ],
-        googleToken: 'google_oauth_active_token_2026',
-        authenticatedAt: new Date().toISOString(),
-      };
-      setGoogleUser(demoUser);
-      setIsLoggedIn(true);
     }
   }, []);
 
