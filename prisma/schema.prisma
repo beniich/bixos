@@ -1,0 +1,197 @@
+// CAFM Pro - Prisma Database Schema
+// Database ORM for Facility Management, Asset Tracking & License Stock Control
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  FACILITY_MANAGER
+  TECHNICIAN
+  CLIENT_VIEWER
+}
+
+enum LicensePlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum LicenseStatus {
+  AVAILABLE
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum AssetCategory {
+  HVAC
+  ELEVATOR
+  ENERGY_GRID
+  SECURITY
+  PLUMBING
+  FIRE_SAFETY
+}
+
+enum AssetStatus {
+  OPERATIONAL
+  WARNING
+  CRITICAL
+  MAINTENANCE
+}
+
+enum WorkOrderPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum WorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  PENDING_PARTS
+}
+
+// 1. ORGANIZATIONS (Clients using CAFM Pro)
+model Organization {
+  id           String       @id @default(uuid())
+  name         String
+  code         String       @unique
+  contactEmail String
+  contactPhone String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  users        User[]
+  assets       Asset[]
+  licenses     LicenseKey[]
+  workOrders   WorkOrder[]
+}
+
+// 2. USERS & ADMINISTRATORS
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           Role         @default(FACILITY_MANAGER)
+  isSuperAdmin   Boolean      @default(false)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assignedWorkOrders WorkOrder[] @relation("AssignedTechnician")
+}
+
+// 3. LICENSE KEYS (Pre-generated single-use stock keys)
+model LicenseKey {
+  id             String        @id @default(uuid())
+  key            String        @unique // Format: CAFM-PRO-XXXX-XXXX-XXXX-XXXX
+  plan           LicensePlan   @default(PRO)
+  maxUsers       Int           @default(10)
+  maxAssets      Int           @default(500)
+  durationDays   Int           @default(365)
+  expiresAt      DateTime
+  status         LicenseStatus @default(AVAILABLE)
+
+  usedByOrgId    String?
+  organization   Organization? @relation(fields: [usedByOrgId], references: [id])
+  usedAt         DateTime?
+  usedByEmail    String?
+  usedByName     String?
+
+  generatedBy    String        @default("tarikbenaich@gmail.com")
+  generatedAt    DateTime      @default(now())
+  notes          String?
+
+  revokedAt      DateTime?
+  revokedBy      String?
+  revokedReason  String?
+}
+
+// 4. ASSETS (Equipment, Chillers, Elevators, Transformers)
+model Asset {
+  id              String        @id @default(uuid())
+  code            String        @unique // e.g. HVAC-NORTH-01
+  name            String
+  category        AssetCategory
+  location        String
+  floor           String
+  status          AssetStatus   @default(OPERATIONAL)
+  healthScore     Int           @default(100)
+  temperature     Float?
+  powerUsageKw    Float?
+  lastMaintenance DateTime?
+  nextScheduled   DateTime?
+  serialNumber    String
+  vendor          String
+
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+
+  sensors         SensorNode[]
+  workOrders      WorkOrder[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+// 5. IOT SENSOR NODES
+model SensorNode {
+  id           String         @id @default(uuid())
+  nodeId       String         @unique // e.g. NODE-A1-TEMP
+  zone         String
+  type         String         // TEMP_HUMIDITY, CO2_AIR_QUALITY, VIBRATION, ENERGY_METER
+  currentValue String
+  unit         String
+  status       String         @default("ONLINE")
+  lastPing     DateTime       @default(now())
+
+  assetId      String?
+  asset        Asset?         @relation(fields: [assetId], references: [id])
+
+  telemetry    TelemetryLog[]
+}
+
+// 6. TELEMETRY LOGS (Time-series data)
+model TelemetryLog {
+  id           String     @id @default(uuid())
+  sensorId     String
+  sensor       SensorNode @relation(fields: [sensorId], references: [id])
+  metric       String     // temperature, vibration_rms, power_kw, co2_ppm
+  value        Float
+  unit         String
+  timestamp    DateTime   @default(now())
+}
+
+// 7. GMAO WORK ORDERS (Maintenance Tickets)
+model WorkOrder {
+  id                   String            @id @default(uuid())
+  ticketNumber         String            @unique // e.g. WO-2026-881
+  title                String
+  description          String
+  priority             WorkOrderPriority @default(MEDIUM)
+  status               WorkOrderStatus   @default(OPEN)
+  location             String
+  predictedFailureProb Int               @default(0) // AI probability %
+
+  assetId              String
+  asset                Asset             @relation(fields: [assetId], references: [id])
+
+  organizationId       String
+  organization         Organization      @relation(fields: [organizationId], references: [id])
+
+  assignedToId         String?
+  assignedTechnician   User?             @relation("AssignedTechnician", fields: [assignedToId], references: [id])
+
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}

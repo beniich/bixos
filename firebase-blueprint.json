@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "WorkOrder": {
+      "title": "Work Order",
+      "description": "Field tech work order item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "location": { "type": "string", "maxLength": 200 },
+        "priority": { "type": "string", "enum": ["Haute", "Moyenne", "Basse"] },
+        "status": { "type": "string", "enum": ["À faire", "En cours", "Clôturé"] },
+        "dueDate": { "type": "string" },
+        "equipmentId": { "type": "string" },
+        "description": { "type": "string", "maxLength": 2000 },
+        "partsUsed": { "type": "string", "maxLength": 500 },
+        "photoUrl": { "type": "string" },
+        "signatureUrl": { "type": "string" },
+        "closedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "location", "priority", "status", "dueDate", "equipmentId", "description"]
+    },
+    "EquipmentHotspot": {
+      "title": "Equipment Hotspot",
+      "description": "Building equipment IoT hotspot",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["HVAC", "Electrical", "Plumbing", "Elevator", "Fire"] },
+        "floor": { "type": "string" },
+        "status": { "type": "string", "enum": ["Optimal", "Warning", "Critical"] },
+        "temp": { "type": "string" },
+        "vibration": { "type": "string" },
+        "power": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "lastMaintenance": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "name", "type", "floor", "status", "temp", "vibration", "power", "x", "y"]
+    },
+    "EnergySetting": {
+      "title": "Energy Setting",
+      "description": "Building ESG energy settings",
+      "type": "object",
+      "properties": {
+        "surfaceArea": { "type": "number" },
+        "currentBill": { "type": "number" },
+        "hvacRetrofit": { "type": "boolean" },
+        "solarPanels": { "type": "boolean" },
+        "smartBacsBms": { "type": "boolean" },
+        "electricityRate": { "type": "number" }
+      },
+      "required": ["surfaceArea", "currentBill", "hvacRetrofit", "solarPanels", "smartBacsBms", "electricityRate"]
+    }
+  },
+  "firestore": {
+    "/work_orders/{workOrderId}": {
+      "schema": "WorkOrder",
+      "description": "Collection of work orders"
+    },
+    "/equipment/{equipmentId}": {
+      "schema": "EquipmentHotspot",
+      "description": "Collection of building equipment hotspots"
+    },
+    "/energy_settings/building_config": {
+      "schema": "EnergySetting",
+      "description": "Energy & ESG configuration"
+    }
+  }
+}
