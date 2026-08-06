@@ -1,124 +1,223 @@
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '../../firebase/config';
-import { Mail, Lock, User, UserPlus, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
-export const RegisterForm: React.FC<{ onNavigateToLogin: () => void }> = ({ onNavigateToLogin }) => {
+// Politique de mot de passe — miroir côté client
+const PASSWORD_RULES = [
+  { test: (p: string) => p.length >= 12, label: '12 caractères minimum' },
+  { test: (p: string) => /[A-Z]/.test(p), label: '1 majuscule' },
+  { test: (p: string) => /[a-z]/.test(p), label: '1 minuscule' },
+  { test: (p: string) => /[0-9]/.test(p), label: '1 chiffre' },
+  { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: '1 caractère spécial' },
+];
+
+interface Props {
+  onSuccess: () => void;
+  onGoLogin: () => void;
+}
+
+export const RegisterForm: React.FC<Props> = ({ onSuccess, onGoLogin }) => {
+  const { register } = useAuth();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const passwordRuleStatus = PASSWORD_RULES.map(r => ({
+    label: r.label,
+    ok: r.test(password),
+  }));
+
+  const passwordStrength = passwordRuleStatus.filter(r => r.ok).length;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors([]);
+
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    const allRulesOk = passwordRuleStatus.every(r => r.ok);
+    if (!allRulesOk) {
+      setError('Votre mot de passe ne respecte pas tous les critères.');
+      return;
+    }
+
     setLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
-    } catch (err: any) {
-      setError(err.message || 'Failed to register');
-    } finally {
-      setLoading(false);
+    const result = await register(email, password, name);
+    setLoading(false);
+
+    if (result.success) {
+      setRegistered(true);
+      return;
+    }
+
+    switch (result.error) {
+      case 'EMAIL_TAKEN':
+        setError('Un compte avec cet email existe déjà.');
+        break;
+      case 'WEAK_PASSWORD':
+        setFieldErrors(result.details || []);
+        setError('Mot de passe insuffisant.');
+        break;
+      case 'TOO_MANY_REQUESTS':
+        setError('Trop de créations de compte depuis cette adresse IP. Réessayez dans 1h.');
+        break;
+      default:
+        setError('Une erreur est survenue. Réessayez.');
     }
   };
 
+  if (registered) {
+    return (
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-logo">✅</div>
+          <h1 className="auth-title">Compte créé !</h1>
+          <p className="auth-subtitle">
+            Un email de vérification a été envoyé à <strong>{email}</strong>.
+            Cliquez sur le lien dans l'email pour activer votre compte.
+          </p>
+        </div>
+        <button className="btn-primary" onClick={onGoLogin}>
+          Aller à la connexion
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-md p-8 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl relative overflow-hidden group">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 opacity-70"></div>
-      
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Create Account</h2>
-        <p className="text-slate-400">Join BizOS and manage your coworking space</p>
+    <div className="auth-card">
+      <div className="auth-header">
+        <div className="auth-logo">⚡ BizOS</div>
+        <h1 className="auth-title">Créer un compte</h1>
+        <p className="auth-subtitle">Rejoignez la plateforme de gestion intelligente</p>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleRegister} className="space-y-5">
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-300">Full Name</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <User className="h-5 w-5 text-slate-500" />
-            </div>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="block w-full pl-10 pr-3 py-3 border border-white/10 rounded-xl leading-5 bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
-              placeholder="John Doe"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="auth-form" noValidate>
+        <div className="form-group">
+          <label className="form-label" htmlFor="reg-name">Nom complet</label>
+          <input
+            id="reg-name"
+            type="text"
+            className="form-input"
+            placeholder="Jean Dupont"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            autoComplete="name"
+            minLength={2}
+            maxLength={100}
+            required
+            disabled={loading}
+          />
         </div>
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-300">Email Address</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Mail className="h-5 w-5 text-slate-500" />
-            </div>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="block w-full pl-10 pr-3 py-3 border border-white/10 rounded-xl leading-5 bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
-              placeholder="you@company.com"
-            />
-          </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="reg-email">Email</label>
+          <input
+            id="reg-email"
+            type="email"
+            className="form-input"
+            placeholder="vous@entreprise.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+            disabled={loading}
+          />
         </div>
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-slate-300">Password</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-slate-500" />
+        <div className="form-group">
+          <label className="form-label" htmlFor="reg-password">Mot de passe</label>
+          <input
+            id="reg-password"
+            type="password"
+            className="form-input"
+            placeholder="Minimum 12 caractères"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            disabled={loading}
+          />
+
+          {/* Indicateur de force */}
+          {password.length > 0 && (
+            <div className="password-strength">
+              <div className="password-strength-bar">
+                {[0, 1, 2, 3, 4].map(i => (
+                  <div
+                    key={i}
+                    className={`password-strength-segment ${
+                      i < passwordStrength
+                        ? passwordStrength <= 2 ? 'weak'
+                        : passwordStrength <= 3 ? 'fair'
+                        : 'strong'
+                        : ''
+                    }`}
+                  />
+                ))}
+              </div>
+              <ul className="password-rules">
+                {passwordRuleStatus.map((rule, i) => (
+                  <li key={i} className={rule.ok ? 'rule-ok' : 'rule-fail'}>
+                    {rule.ok ? '✓' : '✗'} {rule.label}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="block w-full pl-10 pr-3 py-3 border border-white/10 rounded-xl leading-5 bg-white/5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
-              placeholder="••••••••"
-            />
-          </div>
+          )}
         </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="reg-confirm">Confirmer le mot de passe</label>
+          <input
+            id="reg-confirm"
+            type="password"
+            className="form-input"
+            placeholder="Répétez le mot de passe"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            disabled={loading}
+          />
+          {confirmPassword.length > 0 && confirmPassword !== password && (
+            <p className="form-hint form-hint-error">Les mots de passe ne correspondent pas.</p>
+          )}
+        </div>
+
+        {(error || fieldErrors.length > 0) && (
+          <div className="form-error" role="alert">
+            <span className="form-error-icon">⚠</span> {error}
+            {fieldErrors.length > 0 && (
+              <ul className="form-error-list">
+                {fieldErrors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="btn-primary"
+          disabled={loading || passwordStrength < 5 || password !== confirmPassword}
         >
-          {loading ? (
-            <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <>
-              Create Account <UserPlus className="ml-2 h-4 w-4" />
-            </>
-          )}
+          {loading ? 'Création…' : 'Créer mon compte'}
         </button>
       </form>
 
-      <div className="mt-8 text-center">
-        <p className="text-sm text-slate-400">
-          Already have an account?{' '}
-          <button 
-            onClick={onNavigateToLogin}
-            className="font-medium text-purple-400 hover:text-purple-300 inline-flex items-center group transition-colors"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4 transform group-hover:-translate-x-1 transition-transform" />
-            Sign in instead
-          </button>
-        </p>
-      </div>
+      <p className="auth-footer">
+        Déjà un compte ?{' '}
+        <button className="form-link" onClick={onGoLogin}>Se connecter</button>
+      </p>
     </div>
   );
 };

@@ -1,9 +1,16 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
+import cookieParser from 'cookie-parser';
+import { authRouter } from './src/api/auth/routes';
 
 export const app = express();
 app.use(express.json());
+app.use(cookieParser());
+
+// ===== STRICT AUTH ROUTES =====
+app.use('/api/auth', authRouter);
+
 
 // ==========================================
 // SPACEFLOW COWORKING DATABASE STORE & APIS
