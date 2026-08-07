@@ -128,16 +128,16 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const [teamList, setTeamList] = useState([
-    { name: 'Sarah Jenkins', role: 'VP Product & Operations', status: 'En Réunion', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', count: '14 réunions ce mois' },
-    { name: 'Elena Rostova', role: 'Head of Growth', status: 'Disponible', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', count: '9 réunions ce mois' },
-    { name: 'Marcus Silva', role: 'Lead Architect', status: 'Focus Mode', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', count: '11 réunions ce mois' },
-    { name: 'Alex Vernet', role: 'Cybersecurity Manager', status: 'Disponible', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', count: '8 réunions ce mois' }
+    { name: 'Sarah Jenkins', role: 'VP Product & Operations', status: 'In Meeting', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', count: '14 meetings this month' },
+    { name: 'Elena Rostova', role: 'Head of Growth', status: 'Available', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150', count: '9 meetings this month' },
+    { name: 'Marcus Silva', role: 'Lead Architect', status: 'Focus Mode', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', count: '11 meetings this month' },
+    { name: 'Alex Vernet', role: 'Cybersecurity Manager', status: 'Available', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150', count: '8 meetings this month' }
   ]);
 
   const [projectsList, setProjectsList] = useState([
-    { title: 'Refonte UI Mobile Spaceflow', count: '6 Réunions', date: 'Mise à jour hier', decisions: 12, progress: 85 },
-    { title: 'Lancement Expansion Europe', count: '4 Réunions', date: 'Mise à jour le 3 Août', decisions: 8, progress: 60 },
-    { title: 'Migration Cloud Infra & Sécurité', count: '5 Réunions', date: 'Mise à jour il y a 3j', decisions: 15, progress: 92 }
+    { title: 'BizOS GMAO Mobile UI Redesign', count: '6 Meetings', date: 'Updated yesterday', decisions: 12, progress: 85 },
+    { title: 'Europe Expansion Launch', count: '4 Meetings', date: 'Updated Aug 3', decisions: 8, progress: 60 },
+    { title: 'Cloud Infra & Security Migration', count: '5 Meetings', date: 'Updated 3d ago', decisions: 15, progress: 92 }
   ]);
 
   const [activeNavTab, setActiveNavTab] = useState<'Dashboard' | 'Analytics' | 'Team' | 'Projects'>('Dashboard');
@@ -152,7 +152,7 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
   // New Meeting Form
   const [newMeetingTitle, setNewMeetingTitle] = useState('');
   const [newMeetingTime, setNewMeetingTime] = useState('11:00 AM');
-  const [newMeetingDate, setNewMeetingDate] = useState('Aujourd\'hui');
+  const [newMeetingDate, setNewMeetingDate] = useState('Today');
   const [newMeetingSummary, setNewMeetingSummary] = useState('');
   const [newMeetingDecision, setNewMeetingDecision] = useState('');
 
@@ -165,7 +165,7 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
 
   const [aiPromptInput, setAiPromptInput] = useState('');
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
-    { role: 'assistant', text: `Bonjour ! Je suis BizOS AI Assistant. Je connais tout sur le compte-rendu "${selectedMeeting?.title || 'Quarterly Review'}". Posez-moi une question !` }
+    { role: 'assistant', text: `Hello! I am BizOS AI Assistant. I know everything about the summary "${selectedMeeting?.title || 'Quarterly Review'}". Ask me any question!` }
   ]);
   const [isAskingAi, setIsAskingAi] = useState(false);
   const [newDecisionText, setNewDecisionText] = useState('');
@@ -191,13 +191,13 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
       date: newMeetingDate,
       category: 'upcoming',
       participants: [
-        { name: 'Vous (Leader)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' },
-        { name: 'IA Copilot', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' }
+        { name: 'You (Leader)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' },
+        { name: 'AI Copilot', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' }
       ],
-      summaryTitle: newMeetingSummary.trim() || `Compte-rendu ${newMeetingTitle.trim()}`,
-      keyDecisions: newMeetingDecision.trim() ? [newMeetingDecision.trim()] : ['Organiser le suivi des actions'],
+      summaryTitle: newMeetingSummary.trim() || `Summary: ${newMeetingTitle.trim()}`,
+      keyDecisions: newMeetingDecision.trim() ? [newMeetingDecision.trim()] : ['Schedule action follow-ups'],
       nodes: [
-        { id: '1', label: 'Lancement Réunion', status: 'completed', type: 'start' },
+        { id: '1', label: 'Meeting Launch', status: 'completed', type: 'start' },
         { id: '2', label: 'Points à Valider', status: 'active', type: 'decision' },
         { id: '3', label: 'Décisions Prises', status: 'pending', type: 'outcome' }
       ]
@@ -362,14 +362,14 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
       {activeNavTab === 'Dashboard' && (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Left Column (5 Cols): Mes Réunions */}
+        {/* Left Column (5 Cols): My Meetings */}
         <div className="lg:col-span-5 space-y-6">
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-white tracking-tight">Mes Réunions</h2>
+                <h2 className="text-2xl font-bold text-white tracking-tight">My Meetings</h2>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-[#d946ef]/20 border border-[#d946ef]/40 text-[#f472b6] font-mono">
-                  {filteredMeetings.length} Réunions
+                  {filteredMeetings.length} Meetings
                 </span>
               </div>
               <button
@@ -377,7 +377,7 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
                 className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#d946ef] to-[#f472b6] text-white text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-all cursor-pointer shadow-[0_0_12px_rgba(217,70,239,0.4)]"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Nouvelle Réunion</span>
+                <span>New Meeting</span>
               </button>
             </div>
 
@@ -386,18 +386,18 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Rechercher une réunion ou une décision..."
+                placeholder="Search a meeting or decision..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#140826]/80 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#f472b6]"
               />
             </div>
 
-            {/* À venir (Upcoming) Section */}
+            {/* Upcoming Section */}
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-[#f472b6]" />
-                <span>À venir</span>
+                <span>Upcoming</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -501,7 +501,7 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
           </div>
         </div>
 
-        {/* Right Column (7 Cols): Compte-rendu de Réunion Visual Report */}
+        {/* Right Column (7 Cols): Meeting Visual Summary Report */}
         <div className="lg:col-span-7">
           <div className="p-6 rounded-3xl bg-[#130826]/90 border border-[#d946ef]/40 backdrop-blur-xl shadow-[0_0_40px_rgba(217,70,239,0.2)] space-y-6">
             
@@ -510,7 +510,7 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
               <div>
                 <span className="text-[11px] font-mono uppercase text-[#f472b6] tracking-wider">MeetAI Visual Summary</span>
                 <h3 className="text-xl font-bold text-white tracking-tight">
-                  Compte-rendu de Réunion: {selectedMeeting.title}
+                  Meeting Summary: {selectedMeeting.title}
                 </h3>
               </div>
               <div className="flex items-center gap-2">
@@ -519,18 +519,18 @@ export const MeetAiView: React.FC<MeetAiViewProps> = ({ setCurrentPage }) => {
                   className="px-3 py-1.5 rounded-xl bg-[#d946ef]/20 border border-[#d946ef]/50 hover:bg-[#d946ef]/30 text-xs text-[#f472b6] font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Analyser avec l'IA</span>
+                  <span>Analyze with AI</span>
                 </button>
               </div>
             </div>
 
-            {/* Sub-Section 1: Résumé Visuel (Flowchart / Diagram matching screenshot 1) */}
+            {/* Sub-Section 1: Visual Summary */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-                  <span>Résumé Visuel</span>
+                  <span>Visual Summary</span>
                 </h4>
-                <span className="text-[10px] text-slate-400 font-mono">Modélisation de Décision AI</span>
+                <span className="text-[10px] text-slate-400 font-mono">AI Decision Modeling</span>
               </div>
 
               {/* Glassmorphic Flowchart Box */}

@@ -13,8 +13,8 @@ export interface WorkOrder {
   id: string;
   title: string;
   location: string;
-  priority: 'Haute' | 'Moyenne' | 'Basse';
-  status: 'À faire' | 'En cours' | 'Clôturé';
+  priority: 'High' | 'Medium' | 'Low' | 'Haute' | 'Moyenne' | 'Basse';
+  status: 'To Do' | 'In Progress' | 'Closed' | 'À faire' | 'En cours' | 'Clôturé';
   dueDate: string;
   equipmentId: string;
   description: string;
@@ -57,44 +57,44 @@ const STORAGE_KEYS = {
 const INITIAL_WORK_ORDERS: WorkOrder[] = [
   {
     id: 'OT-881',
-    title: 'Remplacement filtres CVC & vérification courroie',
-    location: 'Tour BizOS • Étage 3 R+3',
-    priority: 'Haute',
-    status: 'À faire',
-    dueDate: "Aujourd'hui 14:00",
+    title: 'HVAC Filter Replacement & Belt Inspection',
+    location: 'BizOS Tower • Floor 3 R+3',
+    priority: 'High',
+    status: 'To Do',
+    dueDate: "Today 14:00",
     equipmentId: 'HVAC-01',
-    description: "L'IA a détecté une hausse de perte de charge sur les filtres. Remplacer les caissons filtrants G4.",
+    description: "AI detected increased pressure drop on filters. Replace G4 filter boxes.",
   },
   {
     id: 'OT-882',
-    title: 'Contrôle variateur & dérive thermique ascenseur',
-    location: 'Tour BizOS • Gain Moteur Étage 5',
-    priority: 'Haute',
-    status: 'En cours',
-    dueDate: "Aujourd'hui 16:30",
+    title: 'Inverter Control & Elevator Thermal Drift',
+    location: 'BizOS Tower • Shaft Engine Floor 5',
+    priority: 'High',
+    status: 'In Progress',
+    dueDate: "Today 16:30",
     equipmentId: 'ELEV-01',
-    description: 'Température variateur 62.4°C. Vérifier le système de ventilation auxiliaire et l\'alignement.',
+    description: 'Inverter temperature 62.4°C. Check auxiliary ventilation system and alignment.',
   },
   {
     id: 'OT-880',
-    title: 'Graissage préventif roulement pompe circulation',
-    location: 'Sous-sol -1 • Chaufferie Centrale',
-    priority: 'Moyenne',
-    status: 'Clôturé',
-    dueDate: 'Hier 11:00',
+    title: 'Preventive Circulation Pump Bearing Lubrication',
+    location: 'Basement -1 • Central Boiler Room',
+    priority: 'Medium',
+    status: 'Closed',
+    dueDate: 'Yesterday 11:00',
     equipmentId: 'PUMP-02',
-    description: 'Entretien périodique accompli par l\'équipe du matin.',
-    partsUsed: 'Graisse hautes performances SKF (150g)',
+    description: 'Periodic maintenance completed by morning shift.',
+    partsUsed: 'SKF High Performance Grease (150g)',
     closedAt: '2026-08-04 11:30',
   },
 ];
 
 const INITIAL_EQUIPMENT: EquipmentHotspot[] = [
-  { id: 'HVAC-01', name: 'Centrale d\'Air CVC R+3', type: 'HVAC', floor: 'Étage 3', status: 'Warning', temp: '48.2 °C', vibration: '3.8 mm/s', power: '14.2 kW', x: 42, y: 32, lastMaintenance: '2026-07-15' },
-  { id: 'ELEC-04', name: 'TGBT Transformateur Principal', type: 'Electrical', floor: 'Sous-sol -1', status: 'Optimal', temp: '34.1 °C', vibration: '0.4 mm/s', power: '128.5 kW', x: 28, y: 72, lastMaintenance: '2026-06-10' },
-  { id: 'PUMP-02', name: 'Surpresseur Eau Potable', type: 'Plumbing', floor: 'Sous-sol -1', status: 'Optimal', temp: '22.0 °C', vibration: '1.1 mm/s', power: '5.8 kW', x: 68, y: 76, lastMaintenance: '2026-08-04' },
-  { id: 'ELEV-01', name: 'Ascenseur Nord - Variateur', type: 'Elevator', floor: 'Étage 5', status: 'Critical', temp: '62.4 °C', vibration: '7.2 mm/s', power: '22.0 kW', x: 55, y: 18, lastMaintenance: '2026-05-20' },
-  { id: 'FIRE-01', name: 'Centrale Sécurité Incendie SDI', type: 'Fire', floor: 'Rez-de-chaussée', status: 'Optimal', temp: '21.5 °C', vibration: '0.1 mm/s', power: '1.2 kW', x: 50, y: 55, lastMaintenance: '2026-07-01' },
+  { id: 'HVAC-01', name: 'HVAC Air Handling Unit Floor 3', type: 'HVAC', floor: 'Floor 3', status: 'Warning', temp: '48.2 °C', vibration: '3.8 mm/s', power: '14.2 kW', x: 42, y: 32, lastMaintenance: '2026-07-15' },
+  { id: 'ELEC-04', name: 'Main Transformer LVDB', type: 'Electrical', floor: 'Basement -1', status: 'Optimal', temp: '34.1 °C', vibration: '0.4 mm/s', power: '128.5 kW', x: 28, y: 72, lastMaintenance: '2026-06-10' },
+  { id: 'PUMP-02', name: 'Drinking Water Booster Pump', type: 'Plumbing', floor: 'Basement -1', status: 'Optimal', temp: '22.0 °C', vibration: '1.1 mm/s', power: '5.8 kW', x: 68, y: 76, lastMaintenance: '2026-08-04' },
+  { id: 'ELEV-01', name: 'North Elevator - Drive Inverter', type: 'Elevator', floor: 'Floor 5', status: 'Critical', temp: '62.4 °C', vibration: '7.2 mm/s', power: '22.0 kW', x: 55, y: 18, lastMaintenance: '2026-05-20' },
+  { id: 'FIRE-01', name: 'Fire Safety Central Panel SDI', type: 'Fire', floor: 'Ground Floor', status: 'Optimal', temp: '21.5 °C', vibration: '0.1 mm/s', power: '1.2 kW', x: 50, y: 55, lastMaintenance: '2026-07-01' },
 ];
 
 const INITIAL_ENERGY_SETTINGS: EnergySetting = {

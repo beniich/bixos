@@ -378,7 +378,7 @@ export const CAFMDashboardPage: React.FC<CAFMDashboardPageProps> = ({ onNavigate
                 className="text-slate-400 hover:text-rose-400 flex items-center gap-1 font-bold cursor-pointer transition-all"
               >
                 <LogOut className="w-3 h-3" />
-                <span>DÉCONNEXION</span>
+                <span>LOGOUT</span>
               </button>
             </div>
           </div>

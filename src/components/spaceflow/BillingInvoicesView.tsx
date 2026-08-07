@@ -129,7 +129,7 @@ export const BillingInvoicesView: React.FC<BillingInvoicesViewProps> = ({ isDark
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Spaceflow_Invoices_Export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `BizOS_GMAO_Invoices_Export_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     setToastMsg('Export CSV des factures téléchargé.');
     setTimeout(() => setToastMsg(''), 3000);

@@ -366,7 +366,7 @@ CEE-BAT-EN-101,Ombrieres Photovoltaiques Toiture,${surfaceArea},${Math.round(sur
           <div className="lg:col-span-1 p-6 rounded-2xl bg-[#130826] border border-[#d946ef]/30 space-y-5">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
               <Calculator className="w-4 h-4 text-[#f472b6]" />
-              <span>Paramètres de l'Immeuble</span>
+              <span>Building Parameters</span>
             </h3>
 
             <div className="space-y-4 text-xs">

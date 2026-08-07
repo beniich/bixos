@@ -24,16 +24,12 @@ import { SupportPage } from './components/pages/SupportPage';
 import { LoginPage } from './components/pages/LoginPage';
 import { Footer } from './components/Footer';
 import { LanguageProvider } from './context/LanguageContext';
-import { LoginForm } from './components/auth/LoginForm';
-import { RegisterForm } from './components/auth/RegisterForm';
-import { SubscriptionPlan } from './components/auth/SubscriptionPlan';
-import { useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 
 export function App() {
-  const { user: firebaseUser, loading: authLoading, logout: firebaseLogout } = useAuth();
   const [activePage, setActivePage] = useState<PageId>('home');
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [language, setLanguage] = useState<Language>(() => {
     const savedLang = localStorage.getItem('bizos_lang');
     return (savedLang as Language) || 'EN';
@@ -48,12 +44,8 @@ export function App() {
   const [pendingTargetPage, setPendingTargetPage] = useState<PageId | null>(null);
 
   useEffect(() => {
-    document.title = 'BizOS — Coworking Management Platform';
-  }, []);
-
-  useEffect(() => {
     // Check local storage for existing Google OAuth session
-    const saved = localStorage.getItem('spaceflow_google_user');
+    const saved = localStorage.getItem('bizos_google_user');
     if (saved) {
       try {
         const user = JSON.parse(saved);
@@ -64,25 +56,25 @@ export function App() {
       } catch {
         // ignore
       }
+    } else {
+      // Default demo Google user connected automatically
+      const demoUser: GoogleAuthUser = {
+        email: 'albertomodo.cc@gmail.com',
+        name: 'Alberto Modo',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        provider: 'GOOGLE_OAUTH',
+        scopesAuthorized: [
+          'https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/gmail.readonly',
+        ],
+        googleToken: 'google_oauth_active_token_2026',
+        authenticatedAt: new Date().toISOString(),
+      };
+      setGoogleUser(demoUser);
+      setIsLoggedIn(true);
     }
   }, []);
-
-  // Sync Firebase user with app state
-  useEffect(() => {
-    if (firebaseUser) {
-      setIsLoggedIn(true);
-      setGoogleUser({
-        email: firebaseUser.email || '',
-        name: firebaseUser.displayName || 'BizOS User',
-        avatar: firebaseUser.photoURL || '',
-        provider: 'GOOGLE_OAUTH',
-        authenticatedAt: new Date().toISOString(),
-      });
-      if (activePage === 'login' || activePage === 'register') {
-        setActivePage('dashboard');
-      }
-    }
-  }, [firebaseUser]);
 
   const handleNavigate = (page: PageId) => {
     const protectedPages: PageId[] = [
@@ -117,23 +109,19 @@ export function App() {
     }
   };
 
-  const handleLogoutGoogle = async () => {
-    localStorage.removeItem('spaceflow_google_user');
+  const handleLogoutGoogle = () => {
+    localStorage.removeItem('bizos_google_user');
     setGoogleUser(null);
     setIsLoggedIn(false);
-    try {
-      await firebaseLogout();
-    } catch (err) {
-      console.error(err);
-    }
     setActivePage('home');
   };
 
   return (
-    <LanguageProvider language={language} onLanguageChange={handleLanguageChange}>
+    <AuthProvider>
+      <LanguageProvider language={language} onLanguageChange={handleLanguageChange}>
       <div className="min-h-screen transition-colors font-sans selection:bg-[#d946ef] selection:text-white flex flex-col justify-between bizos-bg bizos-honeycomb text-[#e2e8f0]">
         
-        {/* SPACEFLOW Header Navigation */}
+        {/* BizOS Header Navigation */}
         <SpaceflowHeader
           currentPage={activePage}
           setCurrentPage={handleNavigate}
@@ -233,21 +221,16 @@ export function App() {
           )}
 
           {activePage === 'login' && (
-            <LoginForm onNavigateToRegister={() => handleNavigate('register')} />
-          )}
-          {activePage === 'register' && (
-            <RegisterForm onNavigateToLogin={() => handleNavigate('login')} />
-          )}
-          {activePage === 'subscription' && (
-            <SubscriptionPlan onNavigate={handleNavigate} />
+            <LoginPage onNavigate={handleNavigate} language={language} brand="BizOS GMAO" />
           )}
         </main>
 
         {/* Footer */}
-        <Footer onNavigate={handleNavigate} language={language} brand="BizOS" />
+        <Footer onNavigate={handleNavigate} language={language} brand="BizOS GMAO" />
 
       </div>
     </LanguageProvider>
+  </AuthProvider>
   );
 }
 

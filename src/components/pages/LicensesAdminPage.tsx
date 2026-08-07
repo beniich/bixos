@@ -295,7 +295,7 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
               className="glass-card hover:bg-rose-500/20 text-rose-300 px-4 py-3 rounded-2xl text-xs font-semibold transition-all border border-rose-500/30 flex items-center gap-1.5 cursor-pointer"
             >
               <X className="w-4 h-4" />
-              <span>Déconnexion</span>
+              <span>Log out</span>
             </button>
 
             <button
@@ -433,7 +433,7 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Rechercher clé, email, entreprise..."
+            placeholder="Search key, email, company..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-8 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500/50"

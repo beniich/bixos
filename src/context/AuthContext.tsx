@@ -1,234 +1,234 @@
-import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  User, 
+  signInWithPopup, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged,
+  googleProvider,
+  auth,
+  db
+} from '../services/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-// ===== TYPES =====
-
-interface AuthUser {
+export interface OrgInfo {
   id: string;
-  email: string;
   name: string;
-  role: string;
-  organizationId: string | null;
-  twoFactorEnabled: boolean;
+  role: 'Admin' | 'Collaborateur' | 'Technicien';
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  role: 'Admin' | 'Collaborateur' | 'Technicien';
+  organizationId: string;
+  organizationName: string;
+  allowedOrganizations: OrgInfo[];
+  createdAt?: string;
+  lastLoginAt?: string;
 }
 
 interface AuthContextType {
-  user: AuthUser | null;
+  user: User | null;
+  profile: UserProfile | null;
   loading: boolean;
-  accessToken: string | null;
-  login: (email: string, password: string, opts?: { rememberMe?: boolean; twoFactorCode?: string }) => Promise<LoginResult>;
-  register: (email: string, password: string, name: string) => Promise<RegisterResult>;
-  logout: (logoutAll?: boolean) => Promise<void>;
-  refreshToken: () => Promise<boolean>;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+  updateRole: (role: 'Admin' | 'Collaborateur' | 'Technicien') => Promise<void>;
+  switchOrganization: (orgId: string, orgName: string) => Promise<void>;
+  createOrganization: (orgName: string) => Promise<string>;
 }
 
-interface LoginResult {
-  success: boolean;
-  requiresTwoFactor?: boolean;
-  error?: string;
-  details?: string[];
-}
+const DEFAULT_ORGS: OrgInfo[] = [
+  { id: 'org_bizos_global', name: 'BizOS - Siège Global Operations', role: 'Admin' },
+  { id: 'org_facility_paris', name: 'Facility Management Paris IDF', role: 'Admin' },
+  { id: 'org_lyon_industrial', name: 'Site Industriel Lyon Sud', role: 'Collaborateur' },
+];
 
-interface RegisterResult {
-  success: boolean;
-  error?: string;
-  details?: string[];
-}
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  profile: null,
+  loading: true,
+  loginWithGoogle: async () => {},
+  logout: async () => {},
+  updateRole: async () => {},
+  switchOrganization: async () => {},
+  createOrganization: async () => '',
+});
 
-// ===== CONTEXT =====
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Access token stocké UNIQUEMENT en mémoire (jamais localStorage)
-let memoryAccessToken: string | null = null;
-
-const ACCESS_TOKEN_REFRESH_INTERVAL = 12 * 60 * 1000; // Rafraîchir toutes les 12min (expire à 15min)
-
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // ===== REFRESH TOKEN =====
-
-  const refreshToken = async (): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include', // Envoie le cookie HttpOnly biz_refresh
-      });
-
-      if (!res.ok) {
-        // Session expirée ou révoquée
-        clearSession();
-        return false;
-      }
-
-      const data = await res.json();
-      memoryAccessToken = data.accessToken;
-      setAccessToken(data.accessToken);
-      return true;
-    } catch {
-      clearSession();
-      return false;
-    }
-  };
-
-  const clearSession = () => {
-    memoryAccessToken = null;
-    setAccessToken(null);
-    setUser(null);
-    if (refreshTimerRef.current) {
-      clearInterval(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-  };
-
-  const startRefreshTimer = () => {
-    if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
-    refreshTimerRef.current = setInterval(async () => {
-      const ok = await refreshToken();
-      if (!ok) clearSession();
-    }, ACCESS_TOKEN_REFRESH_INTERVAL);
-  };
-
-  // ===== INIT — Tenter de restaurer la session au démarrage =====
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const initSession = async () => {
-      const ok = await refreshToken();
-      if (ok) {
-        // Décoder l'utilisateur depuis l'access token (JWT payload)
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        // Fetch or create Firestore user profile
+        const userRef = doc(db, 'users', firebaseUser.uid);
         try {
-          const payload = parseJwtPayload(memoryAccessToken!);
-          // Récupérer les infos complètes de l'utilisateur
-          const userRes = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${memoryAccessToken}` },
-          });
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            setUser(userData.user);
-            startRefreshTimer();
+          const snap = await getDoc(userRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            setProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: data.displayName || firebaseUser.displayName || 'Utilisateur BizOS',
+              photoURL: data.photoURL || firebaseUser.photoURL,
+              role: data.role || 'Admin',
+              organizationId: data.organizationId || 'org_bizos_global',
+              organizationName: data.organizationName || 'BizOS - Siège Global Operations',
+              allowedOrganizations: data.allowedOrganizations || DEFAULT_ORGS,
+              createdAt: data.createdAt,
+              lastLoginAt: new Date().toISOString(),
+            });
+          } else {
+            const newProfile: UserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || 'Utilisateur BizOS',
+              photoURL: firebaseUser.photoURL,
+              role: 'Admin', // Default role for main user (Multi-Admin enabled)
+              organizationId: 'org_bizos_global',
+              organizationName: 'BizOS - Siège Global Operations',
+              allowedOrganizations: DEFAULT_ORGS,
+              createdAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString(),
+            };
+            await setDoc(userRef, newProfile);
+            setProfile(newProfile);
           }
-        } catch {
-          clearSession();
+        } catch (err) {
+          console.error('Error loading user profile from Firestore:', err);
+          // Fallback profile if Firestore read fails
+          setProfile({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || 'Utilisateur BizOS',
+            photoURL: firebaseUser.photoURL,
+            role: 'Admin',
+            organizationId: 'org_bizos_global',
+            organizationName: 'BizOS - Siège Global Operations',
+            allowedOrganizations: DEFAULT_ORGS,
+          });
         }
+      } else {
+        setProfile(null);
       }
       setLoading(false);
-    };
+    });
 
-    initSession();
-
-    return () => {
-      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
-    };
+    return () => unsubscribe();
   }, []);
 
-  // ===== LOGIN =====
-
-  const login = async (
-    email: string,
-    password: string,
-    opts: { rememberMe?: boolean; twoFactorCode?: string } = {}
-  ): Promise<LoginResult> => {
+  const loginWithGoogle = async () => {
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password,
-          rememberMe: opts.rememberMe ?? false,
-          twoFactorCode: opts.twoFactorCode,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.status === 200 && data.requiresTwoFactor) {
-        return { success: false, requiresTwoFactor: true };
-      }
-
-      if (!res.ok) {
-        return {
-          success: false,
-          error: data.error,
-          details: data.details,
-        };
-      }
-
-      // Stocker access token en mémoire seulement
-      memoryAccessToken = data.accessToken;
-      setAccessToken(data.accessToken);
-      setUser(data.user);
-      startRefreshTimer();
-
-      return { success: true };
-    } catch {
-      return { success: false, error: 'NETWORK_ERROR' };
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      throw error;
     }
   };
 
-  // ===== REGISTER =====
-
-  const register = async (email: string, password: string, name: string): Promise<RegisterResult> => {
+  const logout = async () => {
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        return {
-          success: false,
-          error: data.error,
-          details: data.details?.fieldErrors?.password || data.details,
-        };
-      }
-
-      return { success: true };
-    } catch {
-      return { success: false, error: 'NETWORK_ERROR' };
+      await firebaseSignOut(auth);
+      setUser(null);
+      setProfile(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  // ===== LOGOUT =====
-
-  const logout = async (logoutAll = false): Promise<void> => {
+  const updateRole = async (role: 'Admin' | 'Collaborateur' | 'Technicien') => {
+    if (!user || !profile) return;
+    const userRef = doc(db, 'users', user.uid);
+    const updated = { ...profile, role, lastLoginAt: new Date().toISOString() };
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${memoryAccessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({ logoutAll }),
-      });
-    } finally {
-      clearSession();
+      await setDoc(userRef, updated, { merge: true });
+      setProfile(updated);
+    } catch (err) {
+      console.error('Failed to update role in Firestore:', err);
     }
+  };
+
+  const switchOrganization = async (orgId: string, orgName: string) => {
+    if (!user || !profile) return;
+    const userRef = doc(db, 'users', user.uid);
+    // Find matching org role or default to Admin
+    const targetOrg = profile.allowedOrganizations.find(o => o.id === orgId);
+    const newRole = targetOrg ? targetOrg.role : 'Admin';
+
+    const updated = {
+      ...profile,
+      organizationId: orgId,
+      organizationName: orgName,
+      role: newRole,
+      lastLoginAt: new Date().toISOString(),
+    };
+
+    try {
+      await setDoc(userRef, updated, { merge: true });
+      setProfile(updated);
+    } catch (err) {
+      console.error('Failed to switch organization in Firestore:', err);
+      // Local fallback state
+      setProfile(updated);
+    }
+  };
+
+  const createOrganization = async (orgName: string): Promise<string> => {
+    const orgId = `org_${Date.now()}`;
+    const newOrgInfo: OrgInfo = { id: orgId, name: orgName, role: 'Admin' };
+
+    if (profile && user) {
+      const updatedAllowed = [...(profile.allowedOrganizations || []), newOrgInfo];
+      const updatedProfile: UserProfile = {
+        ...profile,
+        organizationId: orgId,
+        organizationName: orgName,
+        role: 'Admin',
+        allowedOrganizations: updatedAllowed,
+      };
+
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, updatedProfile, { merge: true });
+        // Also seed organization doc in Firestore
+        const orgRef = doc(db, 'organizations', orgId);
+        await setDoc(orgRef, {
+          id: orgId,
+          name: orgName,
+          createdBy: user.uid,
+          createdAt: new Date().toISOString(),
+          adminUids: [user.uid],
+        });
+        setProfile(updatedProfile);
+      } catch (err) {
+        console.error('Failed to create org in Firestore:', err);
+        setProfile(updatedProfile);
+      }
+    }
+    return orgId;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, login, register, logout, refreshToken }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      loading, 
+      loginWithGoogle, 
+      logout, 
+      updateRole,
+      switchOrganization,
+      createOrganization
+    }}>
+      {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = (): AuthContextType => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
-  return ctx;
-};
+export const useAuth = () => useContext(AuthContext);
 
-/** Décoder le payload d'un JWT (sans vérification — vérification faite côté serveur) */
-function parseJwtPayload(token: string): Record<string, unknown> {
-  const [, payload] = token.split('.');
-  return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-}

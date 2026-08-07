@@ -37,7 +37,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({ isDarkMode, assets, onAd
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Rechercher code, nom, localisation..."
+              placeholder="Search code, name, location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={`w-full ${isDarkMode ? 'bg-black/30 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-xl pl-9 pr-4 py-2.5 text-xs font-mono focus:outline-none focus:border-orange-500`}
@@ -49,11 +49,11 @@ export const AssetsView: React.FC<AssetsViewProps> = ({ isDarkMode, assets, onAd
             onChange={(e) => setFilterCategory(e.target.value)}
             className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${isDarkMode ? 'bg-black/30 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
           >
-            <option value="ALL">Toutes Catégories</option>
-            <option value="HVAC">HVAC / CVC</option>
-            <option value="ELEVATOR">ASCENSEURS</option>
-            <option value="ENERGY_GRID">ÉLECTRICITÉ</option>
-            <option value="FIRE_SAFETY">SÉCURITÉ INCENDIE</option>
+            <option value="ALL">All Categories</option>
+            <option value="HVAC">HVAC</option>
+            <option value="ELEVATOR">ELEVATORS</option>
+            <option value="ENERGY_GRID">ELECTRICITY</option>
+            <option value="FIRE_SAFETY">FIRE SAFETY</option>
           </select>
         </div>
 

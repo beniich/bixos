@@ -52,7 +52,7 @@ export const GoogleAuthGateModal: React.FC<GoogleAuthGateModalProps> = ({
         };
 
         // Save session
-        localStorage.setItem('spaceflow_google_user', JSON.stringify(fullUser));
+        localStorage.setItem('bizos_google_user', JSON.stringify(fullUser));
         onLoginSuccess(fullUser);
       }
     } catch {
@@ -70,7 +70,7 @@ export const GoogleAuthGateModal: React.FC<GoogleAuthGateModalProps> = ({
         googleToken: `google_oauth_token_${Date.now()}`,
         authenticatedAt: new Date().toISOString(),
       };
-      localStorage.setItem('spaceflow_google_user', JSON.stringify(fallbackUser));
+      localStorage.setItem('bizos_google_user', JSON.stringify(fallbackUser));
       onLoginSuccess(fallbackUser);
     } finally {
       setIsLoading(false);

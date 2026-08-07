@@ -1,5 +1,5 @@
-// BizOS — Prisma Schema
-// Auth stricte enterprise-grade: sessions, 2FA, audit, lockout
+// CAFM Pro - Prisma Database Schema
+// Database ORM for Facility Management, Asset Tracking & License Stock Control
 
 generator client {
   provider = "prisma-client-js"
@@ -7,9 +7,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
-
-// ===================== ENUMS =====================
 
 enum Role {
   SUPER_ADMIN
@@ -61,39 +60,7 @@ enum WorkOrderStatus {
   PENDING_PARTS
 }
 
-enum SessionStatus {
-  ACTIVE
-  REVOKED
-  EXPIRED
-}
-
-enum TwoFactorMethod {
-  TOTP
-  EMAIL
-  BACKUP_CODE
-}
-
-enum AuthEventType {
-  LOGIN_SUCCESS
-  LOGIN_FAILED
-  LOGOUT
-  REGISTER
-  EMAIL_VERIFIED
-  PASSWORD_CHANGED
-  PASSWORD_RESET_REQUESTED
-  PASSWORD_RESET_COMPLETED
-  TWO_FA_ENABLED
-  TWO_FA_DISABLED
-  BACKUP_CODE_USED
-  SESSION_REVOKED
-  SESSIONS_REVOKED_ALL
-  ACCOUNT_LOCKED
-  ACCOUNT_UNLOCKED
-  SUSPICIOUS_ACTIVITY
-}
-
-// ===================== CORE =====================
-
+// 1. ORGANIZATIONS (Clients using CAFM Pro)
 model Organization {
   id           String       @id @default(uuid())
   name         String
@@ -107,54 +74,28 @@ model Organization {
   assets       Asset[]
   licenses     LicenseKey[]
   workOrders   WorkOrder[]
-  authAuditLog AuthAuditLog[]
 }
 
+// 2. USERS & ADMINISTRATORS
 model User {
-  id             String        @id @default(uuid())
-  email          String        @unique
+  id             String       @id @default(uuid())
+  email          String       @unique
   passwordHash   String
   name           String
-  role           Role          @default(FACILITY_MANAGER)
-  isSuperAdmin   Boolean       @default(false)
+  role           Role         @default(FACILITY_MANAGER)
+  isSuperAdmin   Boolean      @default(false)
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  // ===== AUTH SECURITY =====
-  emailVerified      Boolean   @default(false)
-  twoFactorEnabled   Boolean   @default(false)
-
-  passwordChangedAt  DateTime?
-  mustChangePassword Boolean   @default(false)
-
-  failedLoginCount   Int       @default(0)
-  failedLoginAt      DateTime?
-  lockedUntil        DateTime?
-
-  lastLoginAt        DateTime?
-  lastLoginIp        String?
-
-  deletedAt          DateTime?
-
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  assignedWorkOrders WorkOrder[]         @relation("AssignedTechnician")
-  sessions           Session[]
-  twoFactorSecret    TwoFactorSecret?
-  passwordHistory    PasswordHistory[]
-  passwordResets     PasswordReset[]
-  emailVerifications EmailVerification[]
-  loginAttempts      LoginAttempt[]
-  accountLockouts    AccountLockout[]
-  authAuditLog       AuthAuditLog[]
+  assignedWorkOrders WorkOrder[] @relation("AssignedTechnician")
 }
 
-// ===================== LICENSE KEYS =====================
-
+// 3. LICENSE KEYS (Pre-generated single-use stock keys)
 model LicenseKey {
   id             String        @id @default(uuid())
-  key            String        @unique
+  key            String        @unique // Format: CAFM-PRO-XXXX-XXXX-XXXX-XXXX
   plan           LicensePlan   @default(PRO)
   maxUsers       Int           @default(10)
   maxAssets      Int           @default(500)
@@ -177,11 +118,10 @@ model LicenseKey {
   revokedReason  String?
 }
 
-// ===================== ASSETS =====================
-
+// 4. ASSETS (Equipment, Chillers, Elevators, Transformers)
 model Asset {
   id              String        @id @default(uuid())
-  code            String        @unique
+  code            String        @unique // e.g. HVAC-NORTH-01
   name            String
   category        AssetCategory
   location        String
@@ -204,11 +144,12 @@ model Asset {
   updatedAt       DateTime      @updatedAt
 }
 
+// 5. IOT SENSOR NODES
 model SensorNode {
   id           String         @id @default(uuid())
-  nodeId       String         @unique
+  nodeId       String         @unique // e.g. NODE-A1-TEMP
   zone         String
-  type         String
+  type         String         // TEMP_HUMIDITY, CO2_AIR_QUALITY, VIBRATION, ENERGY_METER
   currentValue String
   unit         String
   status       String         @default("ONLINE")
@@ -220,25 +161,27 @@ model SensorNode {
   telemetry    TelemetryLog[]
 }
 
+// 6. TELEMETRY LOGS (Time-series data)
 model TelemetryLog {
   id           String     @id @default(uuid())
   sensorId     String
   sensor       SensorNode @relation(fields: [sensorId], references: [id])
-  metric       String
+  metric       String     // temperature, vibration_rms, power_kw, co2_ppm
   value        Float
   unit         String
   timestamp    DateTime   @default(now())
 }
 
+// 7. GMAO WORK ORDERS (Maintenance Tickets)
 model WorkOrder {
   id                   String            @id @default(uuid())
-  ticketNumber         String            @unique
+  ticketNumber         String            @unique // e.g. WO-2026-881
   title                String
   description          String
   priority             WorkOrderPriority @default(MEDIUM)
   status               WorkOrderStatus   @default(OPEN)
   location             String
-  predictedFailureProb Int               @default(0)
+  predictedFailureProb Int               @default(0) // AI probability %
 
   assetId              String
   asset                Asset             @relation(fields: [assetId], references: [id])
@@ -251,140 +194,4 @@ model WorkOrder {
 
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-}
-
-// ===================== AUTH SECURITY TABLES =====================
-
-model Session {
-  id               String        @id @default(uuid())
-  userId           String
-  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  refreshTokenHash String        @unique
-  userAgentHash    String
-  ipAddress        String?
-  geoCountry       String?
-  geoCity          String?
-  deviceType       String?
-
-  status           SessionStatus @default(ACTIVE)
-
-  issuedAt         DateTime      @default(now())
-  lastUsedAt       DateTime      @default(now())
-  expiresAt        DateTime
-  revokedAt        DateTime?
-  revokedReason    String?
-
-  @@index([userId])
-  @@index([status, expiresAt])
-}
-
-model TwoFactorSecret {
-  id                 String          @id @default(uuid())
-  userId             String          @unique
-  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  method             TwoFactorMethod @default(TOTP)
-  secretEncrypted    String
-  backupCodesHashed  String[]
-
-  enabledAt          DateTime?
-  lastUsedAt         DateTime?
-
-  @@index([userId])
-}
-
-model PasswordHistory {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  passwordHash String
-  createdAt    DateTime @default(now())
-
-  @@index([userId, createdAt])
-}
-
-model PasswordReset {
-  id            String    @id @default(uuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash     String    @unique
-  ipAddress     String?
-  userAgent     String?
-
-  requestedAt   DateTime  @default(now())
-  expiresAt     DateTime
-  usedAt        DateTime?
-  invalidatedAt DateTime?
-
-  @@index([userId])
-}
-
-model EmailVerification {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  email       String
-  tokenHash   String    @unique
-  requestedAt DateTime  @default(now())
-  expiresAt   DateTime
-  verifiedAt  DateTime?
-  ipAddress   String?
-
-  @@index([userId, requestedAt])
-}
-
-model LoginAttempt {
-  id             String    @id @default(uuid())
-  userId         String?
-  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  email          String?
-  ipAddress      String
-  success        Boolean
-  failureReason  String?
-  userAgent      String?
-  attemptedAt    DateTime  @default(now())
-
-  @@index([email, attemptedAt])
-  @@index([ipAddress, attemptedAt])
-}
-
-model AccountLockout {
-  id          String    @id @default(uuid())
-  userId      String?
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  email       String?
-  ipAddress   String?
-  reason      String
-  lockedAt    DateTime  @default(now())
-  expiresAt   DateTime
-  unlockedAt  DateTime?
-  unlockedBy  String?
-
-  @@index([email])
-  @@index([expiresAt])
-}
-
-model AuthAuditLog {
-  id             String        @id @default(uuid())
-  userId         String?
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-
-  eventType      AuthEventType
-  email          String?
-  ipAddress      String?
-  userAgent      String?
-  geoCountry     String?
-  success        Boolean?
-  failureReason  String?
-  metadata       Json?
-
-  createdAt      DateTime      @default(now())
-
-  @@index([userId, createdAt])
-  @@index([organizationId, createdAt])
-  @@index([eventType, createdAt])
-  @@index([ipAddress, createdAt])
 }

@@ -23,16 +23,16 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({ isDarkMode }) 
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-lg font-black uppercase text-orange-500">PLAN DE MAINTENANCE PRÉVENTIVE (PMP)</h2>
-          <p className={`text-xs ${subText}`}>Calendrier automatisé des opérations réglementaires et préventives</p>
+          <h2 className="text-lg font-black uppercase text-orange-500">PREVENTIVE MAINTENANCE PLAN (PMP)</h2>
+          <p className={`text-xs ${subText}`}>Automated calendar of regulatory and preventive operations</p>
         </div>
         <button
           onClick={() => {
-            alert("Planning PMP synchronisé avec le calendrier de l'équipe technique.");
+            alert("PMP Schedule synced with technical team calendar.");
           }}
           className="px-4 py-2.5 rounded-xl btn-gradient-orange text-white text-xs font-bold shadow-md cursor-pointer"
         >
-          LANCER CYCLE PRÉVENTIF
+          START PREVENTIVE CYCLE
         </button>
       </div>
 

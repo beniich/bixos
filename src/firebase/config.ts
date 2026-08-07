@@ -25,8 +25,9 @@ let db: Firestore;
 if (isConfigured) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
-  console.log('[Firebase] Initialized with project:', firebaseConfig.projectId);
+  const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)';
+  db = getFirestore(app, databaseId);
+  console.log('[Firebase] Initialized with project:', firebaseConfig.projectId, 'and database:', databaseId);
 } else {
   console.warn('[Firebase] Running in DEMO mode — no Firebase credentials configured.\nSet VITE_FIREBASE_* in .env.local to enable authentication.');
   // Create minimal mock objects so imports don't crash

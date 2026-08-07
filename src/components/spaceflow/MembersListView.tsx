@@ -76,7 +76,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
       });
 
       if (res.ok) {
-        setActionMsg(`Membre ${newFirstName} ${newLastName} créé avec succès !`);
+        setActionMsg(`Member ${newFirstName} ${newLastName} created successfully!`);
         setShowAddModal(false);
         setNewFirstName('');
         setNewLastName('');
@@ -87,7 +87,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
         setTimeout(() => setActionMsg(''), 4000);
       }
     } catch {
-      setActionMsg('Erreur lors de la création du membre.');
+      setActionMsg('Error creating member.');
     }
   };
 
@@ -96,25 +96,25 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
       const res = await fetch(`/api/members/${id}/invite`, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        setActionMsg(`Invitation envoyée via l'API Gmail à ${name} !`);
+        setActionMsg(`Invitation sent via Gmail API to ${name}!`);
         setTimeout(() => setActionMsg(''), 4000);
       }
     } catch {
-      setActionMsg('Échec de l\'envoi de l\'invitation.');
+      setActionMsg('Failed to send invitation.');
     }
   };
 
   const handleDeleteMember = async (id: string) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce membre ?')) return;
+    if (!confirm('Are you sure you want to delete this member?')) return;
     try {
       const res = await fetch(`/api/members/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setActionMsg('Membre supprimé.');
+        setActionMsg('Member deleted.');
         fetchMembers();
         setTimeout(() => setActionMsg(''), 3000);
       }
     } catch {
-      setActionMsg('Erreur de suppression.');
+      setActionMsg('Delete error.');
     }
   };
 
@@ -125,9 +125,9 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
         <div>
           <h2 className={`text-xl font-black uppercase tracking-tight flex items-center gap-2.5 ${mainTitleText}`}>
             <Users className="w-6 h-6 text-orange-500" />
-            <span>GESTION DES MEMBRES COWORKERS ({members.length})</span>
+            <span>COWORKER MEMBERS MANAGEMENT ({members.length})</span>
           </h2>
-          <p className={`text-xs ${subText}`}>Annuaire centralisé des abonnés, suivi des plans et envoi d'invitations d'accès</p>
+          <p className={`text-xs ${subText}`}>Centralized directory of subscribers, plan tracking, and access invitations</p>
         </div>
 
         <button
@@ -135,7 +135,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
           className="px-4 py-2.5 rounded-xl btn-gradient-orange text-white text-xs font-extrabold flex items-center gap-2 shadow-md cursor-pointer hover:opacity-90 transition-all self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>AJOUTER UN MEMBRE</span>
+          <span>ADD A MEMBER</span>
         </button>
       </div>
 
@@ -154,7 +154,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par nom, email, entreprise..."
+            placeholder="Search by name, email, company..."
             className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-medium focus:outline-none focus:border-orange-500 ${
               isDarkMode ? 'bg-black/30 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
             }`}
@@ -174,15 +174,15 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
               isDarkMode ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
             }`}
           >
-            <option value="ALL">Tous les plans</option>
+            <option value="ALL">All plans</option>
             <option value="HOT_DESK">Hot Desk (€250)</option>
-            <option value="DEDICATED">Bureau Dédié (€450)</option>
-            <option value="PRIVATE_OFFICE">Bureau Privé (€1800)</option>
+            <option value="DEDICATED">Dedicated Desk (€450)</option>
+            <option value="PRIVATE_OFFICE">Private Office (€1800)</option>
             <option value="DAY_PASS">Day Pass (€80)</option>
           </select>
 
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 ml-2">
-            <span>Statut:</span>
+            <span>Status:</span>
           </div>
           <select
             value={selectedStatus}
@@ -191,16 +191,16 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
               isDarkMode ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
             }`}
           >
-            <option value="ALL">Tous les statuts</option>
-            <option value="ACTIVE">Actif</option>
-            <option value="PENDING">En attente</option>
-            <option value="EXPIRED">Expiré</option>
+            <option value="ALL">All statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="PENDING">Pending</option>
+            <option value="EXPIRED">Expired</option>
           </select>
 
           <button
             onClick={fetchMembers}
             className="p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300"
-            title="Rafraîchir"
+            title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -213,11 +213,11 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-white/10 bg-white/5 text-slate-400 uppercase text-[10px] font-mono tracking-wider">
-                <th className="py-3 px-4">MEMBRE</th>
-                <th className="py-3 px-4">ENTREPRISE</th>
-                <th className="py-3 px-4">PLAN ABONNEMENT</th>
-                <th className="py-3 px-4">STATUT</th>
-                <th className="py-3 px-4">COTISATION</th>
+                <th className="py-3 px-4">MEMBER</th>
+                <th className="py-3 px-4">COMPANY</th>
+                <th className="py-3 px-4">MEMBERSHIP PLAN</th>
+                <th className="py-3 px-4">STATUS</th>
+                <th className="py-3 px-4">MONTHLY FEE</th>
                 <th className="py-3 px-4 text-right">ACTIONS</th>
               </tr>
             </thead>
@@ -225,7 +225,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
               {members.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-500 font-bold">
-                    Aucun membre trouvé correspondant à vos critères.
+                    No members found matching your criteria.
                   </td>
                 </tr>
               ) : (
@@ -246,7 +246,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
                     </td>
 
                     <td className="py-3 px-4">
-                      <div className={`font-medium ${valueText}`}>{m.companyName || 'Indépendant'}</div>
+                      <div className={`font-medium ${valueText}`}>{m.companyName || 'Freelancer'}</div>
                       <div className={`text-[10px] font-mono ${subText}`}>{m.phone || 'N/A'}</div>
                     </td>
 
@@ -273,7 +273,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
                     </td>
 
                     <td className={`py-3 px-4 font-mono font-bold ${valueText}`}>
-                      €{m.monthlyFee} / mois
+                      €{m.monthlyFee} / month
                     </td>
 
                     <td className="py-3 px-4 text-right">
@@ -281,14 +281,14 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
                         <button
                           onClick={() => handleInviteMember(m.id, `${m.firstName} ${m.lastName}`)}
                           className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500 hover:text-white transition-all cursor-pointer"
-                          title="Envoyer invitation par Gmail API"
+                          title="Send invitation via Gmail API"
                         >
                           <Send className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteMember(m.id)}
                           className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
-                          title="Supprimer"
+                          title="Delete"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -309,7 +309,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-sm font-black uppercase text-orange-400 flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                <span>INSCRIRE UN NOUVEAU MEMBRE</span>
+                <span>REGISTER A NEW MEMBER</span>
               </h3>
               <button 
                 onClick={() => setShowAddModal(false)}
@@ -322,7 +322,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
             <form onSubmit={handleAddMember} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block font-bold mb-1 ${subText}`}>Prénom</label>
+                  <label className={`block font-bold mb-1 ${subText}`}>First Name</label>
                   <input
                     type="text"
                     required
@@ -333,7 +333,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
                   />
                 </div>
                 <div>
-                  <label className={`block font-bold mb-1 ${subText}`}>Nom</label>
+                  <label className={`block font-bold mb-1 ${subText}`}>Last Name</label>
                   <input
                     type="text"
                     required
@@ -346,20 +346,20 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
               </div>
 
               <div>
-                <label className={`block font-bold mb-1 ${subText}`}>Email Professionnel</label>
+                <label className={`block font-bold mb-1 ${subText}`}>Work Email</label>
                 <input
                   type="email"
                   required
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="jean.dupont@entreprise.fr"
+                  placeholder="jean.dupont@company.com"
                   className={`w-full p-2.5 rounded-xl border ${isDarkMode ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'} focus:outline-none focus:border-orange-500`}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block font-bold mb-1 ${subText}`}>Entreprise / Société</label>
+                  <label className={`block font-bold mb-1 ${subText}`}>Company / Business</label>
                   <input
                     type="text"
                     value={newCompany}
@@ -369,7 +369,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
                   />
                 </div>
                 <div>
-                  <label className={`block font-bold mb-1 ${subText}`}>Téléphone</label>
+                  <label className={`block font-bold mb-1 ${subText}`}>Phone</label>
                   <input
                     type="text"
                     value={newPhone}
@@ -382,7 +382,7 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block font-bold mb-1 ${subText}`}>Formule Abonnement</label>
+                  <label className={`block font-bold mb-1 ${subText}`}>Membership Plan</label>
                   <select
                     value={newPlan}
                     onChange={(e) => {
@@ -396,14 +396,14 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
                     className={`w-full p-2.5 rounded-xl border ${isDarkMode ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'} focus:outline-none focus:border-orange-500`}
                   >
                     <option value="HOT_DESK">Hot Desk (€250)</option>
-                    <option value="DEDICATED">Bureau Dédié (€450)</option>
-                    <option value="PRIVATE_OFFICE">Bureau Privé (€1800)</option>
+                    <option value="DEDICATED">Dedicated Desk (€450)</option>
+                    <option value="PRIVATE_OFFICE">Private Office (€1800)</option>
                     <option value="DAY_PASS">Day Pass (€80)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className={`block font-bold mb-1 ${subText}`}>Cotisation (€ / mois)</label>
+                  <label className={`block font-bold mb-1 ${subText}`}>Monthly Fee (€ / month)</label>
                   <input
                     type="number"
                     value={newFee}
@@ -419,13 +419,13 @@ export const MembersListView: React.FC<MembersListViewProps> = ({ isDarkMode }) 
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 rounded-xl bg-white/10 text-slate-300 font-bold hover:bg-white/20 transition-all cursor-pointer"
                 >
-                  ANNULER
+                  CANCEL
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 rounded-xl btn-gradient-orange text-white font-extrabold hover:opacity-90 transition-all cursor-pointer shadow-md"
                 >
-                  ENREGISTRER LE MEMBRE
+                  SAVE MEMBER
                 </button>
               </div>
             </form>

@@ -357,16 +357,16 @@ export const DashboardOverviewView: React.FC<DashboardOverviewViewProps> = ({
         {/* Forecast / Preventive Schedule */}
         <div className={`${cardBg} p-6 rounded-2xl space-y-4`}>
           <div className="flex items-center justify-between border-b border-slate-500/20 pb-3">
-            <h3 className="text-xs font-black uppercase tracking-wider">AGENDA PRÉVISIONNEL (7J)</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider">FORECAST SCHEDULE (7D)</h3>
             <button onClick={() => onNavigateRoute('maintenance')} className="text-[11px] font-bold text-orange-400 hover:underline cursor-pointer">
-              CALENDRIER &gt;
+              CALENDAR &gt;
             </button>
           </div>
           <div className="space-y-3">
             {[
-              { date: 'Demain, 09:00', task: 'Test Démarrage Groupe Électrogène', loc: 'SS-2' },
-              { date: '05 Août, 14:00', task: 'Inspection Thermographique Armoires', loc: 'R+3' },
-              { date: '07 Août, 10:30', task: 'Remplacement Sondes CO2 Atrium', loc: 'Hall A' },
+              { date: 'Tomorrow, 09:00', task: 'Generator Startup Test', loc: 'BS-2' },
+              { date: 'Aug 05, 14:00', task: 'Thermographic Inspection of Cabinets', loc: 'Floor 3' },
+              { date: 'Aug 07, 10:30', task: 'Replacement of Atrium CO2 Sensors', loc: 'Hall A' },
             ].map((ev, i) => (
               <div key={i} className={`p-3 rounded-xl border flex items-center justify-between ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="space-y-0.5">

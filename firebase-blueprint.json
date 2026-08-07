@@ -1,11 +1,41 @@
 {
   "entities": {
+    "Organization": {
+      "title": "Organization Tenant",
+      "description": "Multi-tenant organization container for strict data isolation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "adminUids": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "createdBy", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile with role and organization assignment",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Collaborateur", "Technicien"] },
+        "organizationId": { "type": "string" },
+        "organizationName": { "type": "string" },
+        "allowedOrganizations": { "type": "array" }
+      },
+      "required": ["uid", "role", "organizationId"]
+    },
     "WorkOrder": {
       "title": "Work Order",
       "description": "Field tech work order item",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "organizationId": { "type": "string" },
         "title": { "type": "string", "maxLength": 200 },
         "location": { "type": "string", "maxLength": 200 },
         "priority": { "type": "string", "enum": ["Haute", "Moyenne", "Basse"] },
@@ -26,6 +56,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "organizationId": { "type": "string" },
         "name": { "type": "string", "maxLength": 200 },
         "type": { "type": "string", "enum": ["HVAC", "Electrical", "Plumbing", "Elevator", "Fire"] },
         "floor": { "type": "string" },
@@ -53,9 +84,59 @@
         "electricityRate": { "type": "number" }
       },
       "required": ["surfaceArea", "currentBill", "hvacRetrofit", "solarPanels", "smartBacsBms", "electricityRate"]
+    },
+    "SiteLocation": {
+      "title": "Site Location",
+      "description": "Global operational site location and telemetry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "status": { "type": "string", "enum": ["operational", "panne", "intervention"] },
+        "assetCount": { "type": "number" },
+        "healthScore": { "type": "number" },
+        "activeFailure": { "type": "string" },
+        "technicianAssigned": { "type": "string" },
+        "slaRemaining": { "type": "string" },
+        "updatedBy": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "city", "country", "lat", "lng", "status", "assetCount", "healthScore"]
+    },
+    "CollaboratorEntry": {
+      "title": "Collaborator Entry",
+      "description": "Data entered by Admin or Collaborators in real time",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string", "enum": ["Admin", "Collaborateur", "Technicien"] },
+        "category": { "type": "string", "enum": ["Intervention", "Panne / Incident", "Contrôle Qualité", "Modification Site", "Note ESG"] },
+        "title": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 2000 },
+        "siteId": { "type": "string" },
+        "siteName": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "authorName", "authorRole", "category", "title", "content", "timestamp"]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles and roles"
+    },
+    "/organizations/{organizationId}": {
+      "schema": "Organization",
+      "description": "Collection of organizations for multi-tenant isolation"
+    },
     "/work_orders/{workOrderId}": {
       "schema": "WorkOrder",
       "description": "Collection of work orders"
@@ -67,6 +148,15 @@
     "/energy_settings/building_config": {
       "schema": "EnergySetting",
       "description": "Energy & ESG configuration"
+    },
+    "/sites/{siteId}": {
+      "schema": "SiteLocation",
+      "description": "Collection of operational site locations on map"
+    },
+    "/collaborator_entries/{entryId}": {
+      "schema": "CollaboratorEntry",
+      "description": "Real-time records entered by admin or collaborators"
     }
   }
 }
+

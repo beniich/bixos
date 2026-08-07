@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { authenticator } from 'otpauth';
+import * as OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import argon2 from 'argon2';
@@ -10,19 +10,10 @@ const prisma = new PrismaClient();
 const ISSUER = 'BizOS';
 const BACKUP_CODES_COUNT = 10;
 
-// Fenêtre ±1 step (tolérance horloge 30s)
-authenticator.options = { digits: 6, step: 30, window: 1 };
-
-export interface TwoFactorSetup {
-  secret: string;         // À afficher à l'utilisateur pour saisie manuelle
-  qrCodeDataUrl: string;  // QR code scannable
-  backupCodes: string[];  // À afficher UNE SEULE FOIS
-}
-
 /** Initialise la config 2FA TOTP pour un utilisateur */
 export async function initiate2FASetup(userId: string, userEmail: string): Promise<TwoFactorSetup> {
-  const secret = authenticator.generateSecret(32);
-  const encryptedSecret = encryptSecret(secret);
+  const secret = new OTPAuth.Secret({ size: 32 });
+  const encryptedSecret = encryptSecret(secret.base32);
 
   // Générer 10 codes de secours aléatoires
   const backupCodes = Array.from({ length: BACKUP_CODES_COUNT }, () =>
@@ -44,10 +35,18 @@ export async function initiate2FASetup(userId: string, userEmail: string): Promi
     },
   });
 
-  const otpauthUrl = authenticator.keyuri(userEmail, ISSUER, secret);
-  const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
+  const totp = new OTPAuth.TOTP({
+    issuer: ISSUER,
+    label: userEmail,
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: secret
+  });
 
-  return { secret, qrCodeDataUrl, backupCodes };
+  const qrCodeDataUrl = await QRCode.toDataURL(totp.toString());
+
+  return { secret: secret.base32, qrCodeDataUrl, backupCodes };
 }
 
 /** Vérifie un code TOTP ou code de secours */
@@ -59,8 +58,16 @@ export async function verify2FACode(
   if (!record) return { verified: false, isBackupCode: false };
 
   // 1. Vérifier TOTP
-  const secret = decryptSecret(record.secretEncrypted);
-  if (authenticator.verify({ token, secret })) {
+  const secretBase32 = decryptSecret(record.secretEncrypted);
+  const totp = new OTPAuth.TOTP({
+    issuer: ISSUER,
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: OTPAuth.Secret.fromBase32(secretBase32)
+  });
+
+  if (totp.validate({ token, window: 1 }) !== null) {
     await prisma.twoFactorSecret.update({
       where: { id: record.id },
       data: { lastUsedAt: new Date() },

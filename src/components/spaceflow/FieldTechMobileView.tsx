@@ -1,26 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
-  Smartphone, Wifi, WifiOff, QrCode, CheckCircle2, Clock, MapPin, Camera, PenTool, Wrench, RefreshCw, AlertCircle, ArrowRight, ShieldCheck, Check, Trash2, Image as ImageIcon
+  Smartphone, Wifi, WifiOff, QrCode, Wrench, CheckCircle2, 
+  MapPin, Clock, Camera, PenTool, AlertTriangle, ShieldCheck, Trash2
 } from 'lucide-react';
 import { useFieldTechStore, WorkOrder } from '../../services/fieldTechStore';
 
 export const FieldTechMobileView: React.FC = () => {
-  const { workOrders, updateWorkOrder } = useFieldTechStore();
+  const { workOrders, updateWorkOrder, addWorkOrder } = useFieldTechStore();
 
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [offlineSyncQueue, setOfflineSyncQueue] = useState<number>(0);
-  const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [offlineSyncQueue, setOfflineSyncQueue] = useState(0);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [scannedEquipment, setScannedEquipment] = useState<string | null>(null);
+
+  // Active modal order for completion
   const [activeOrder, setActiveOrder] = useState<WorkOrder | null>(null);
-
-  // Closure Form State
-  const [partsUsed, setPartsUsed] = useState<string>('Kit Filtres CVC G4 (x2), Joint Étanchéité (x1)');
+  const [partsUsed, setPartsUsed] = useState('SKF Bearing 6204-2RSH');
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
-  const [signatureSigned, setSignatureSigned] = useState<boolean>(false);
+  const [signatureSigned, setSignatureSigned] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>(undefined);
-  const [isDrawing, setIsDrawing] = useState<boolean>(false);
 
+  // Canvas ref for signature
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawing = useRef(false);
 
   const toggleOnline = () => {
     setIsOnline(!isOnline);
@@ -29,72 +31,65 @@ export const FieldTechMobileView: React.FC = () => {
   const handleScanQr = () => {
     setShowQrModal(true);
     setTimeout(() => {
-      setScannedEquipment('Équipement HVAC-01 (Centrale d\'Air CVC R+3)');
+      setScannedEquipment('Equipment ELEV-01 (Drive Inverter Schneider Altivar 630)');
     }, 1500);
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    isDrawing.current = true;
+    setSignatureSigned(true);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.strokeStyle = '#f472b6';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    isDrawing.current = false;
+    if (canvasRef.current) {
+      setSignatureUrl(canvasRef.current.toDataURL());
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        setPhotoUrl(event.target?.result as string);
+      reader.onloadend = () => {
+        setPhotoUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Signature Canvas Drawing Logic
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-
-    ctx.strokeStyle = '#f472b6';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.lineTo(x, y);
-    ctx.stroke();
-
-    setSignatureSigned(true);
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      setSignatureUrl(canvas.toDataURL());
-    }
-  };
-
   const clearSignature = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     setSignatureSigned(false);
     setSignatureUrl(undefined);
@@ -102,7 +97,7 @@ export const FieldTechMobileView: React.FC = () => {
 
   const handleCloseOrder = (orderId: string) => {
     updateWorkOrder(orderId, {
-      status: 'Clôturé',
+      status: 'Closed',
       partsUsed,
       photoUrl,
       signatureUrl,
@@ -125,8 +120,8 @@ export const FieldTechMobileView: React.FC = () => {
             <Smartphone className="w-4 h-4" />
             <span>FIELDTECH MOBILE & PWA OFFLINE-FIRST ENGINE</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Espace Technicien Terrain & Mode Hors-Ligne</h2>
-          <p className="text-xs text-slate-300">Gestion des Ordres de Travail (OT), scan QR code équipements et clôture avec signature numérique.</p>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Field Tech Workspace & Offline Mode</h2>
+          <p className="text-xs text-slate-300">Manage Work Orders (WO), scan equipment QR codes, and close with digital signature.</p>
         </div>
 
         {/* Offline Toggle Badge */}
@@ -140,12 +135,12 @@ export const FieldTechMobileView: React.FC = () => {
             }`}
           >
             {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-            <span>{isOnline ? 'Réseau Connecté' : 'Mode Hors-Ligne Actif (IndexedDB)'}</span>
+            <span>{isOnline ? 'Network Connected' : 'Offline Mode Active (IndexedDB)'}</span>
           </button>
 
           {offlineSyncQueue > 0 && (
             <span className="px-3 py-1 rounded-full bg-[#d946ef]/20 border border-[#d946ef]/40 text-[#f472b6] text-xs font-mono animate-pulse">
-              {offlineSyncQueue} OT en attente de sync
+              {offlineSyncQueue} WOs pending sync
             </span>
           )}
         </div>
@@ -158,8 +153,8 @@ export const FieldTechMobileView: React.FC = () => {
             <QrCode className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Scanner d'Équipement NFC & QR Code</h3>
-            <p className="text-xs text-slate-400">Identifiez instantanément un composant sur le chantier pour ouvrir sa fiche technique.</p>
+            <h3 className="text-sm font-bold text-white">NFC & QR Code Equipment Scanner</h3>
+            <p className="text-xs text-slate-400">Instantly identify a component on site to open its technical file.</p>
           </div>
         </div>
 
@@ -168,15 +163,15 @@ export const FieldTechMobileView: React.FC = () => {
           className="w-full sm:w-auto px-6 py-2.5 rounded-full bizos-cta-pink text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(217,70,239,0.4)] transition-transform hover:scale-105"
         >
           <QrCode className="w-4 h-4" />
-          <span>Lancer le Scanner Caméra</span>
+          <span>Launch Camera Scanner</span>
         </button>
       </div>
 
       {/* Work Orders List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-white">Ordres de Travail (OT) Assignés ({workOrders.length})</h3>
-          <span className="text-xs text-slate-400">Ordre de priorité SLA</span>
+          <h3 className="text-base font-semibold text-white">Assigned Work Orders (WO) ({workOrders.length})</h3>
+          <span className="text-xs text-slate-400">SLA Priority Order</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -184,7 +179,7 @@ export const FieldTechMobileView: React.FC = () => {
             <div 
               key={order.id}
               className={`p-5 rounded-2xl bg-[#130826] border transition-all space-y-4 flex flex-col justify-between ${
-                order.status === 'Clôturé' 
+                order.status === 'Closed' || order.status === 'Clôturé' 
                   ? 'border-white/10 opacity-75' 
                   : 'border-[#d946ef]/40 hover:border-[#f472b6] shadow-[0_0_15px_rgba(217,70,239,0.1)]'
               }`}
@@ -195,13 +190,13 @@ export const FieldTechMobileView: React.FC = () => {
                     {order.id}
                   </span>
                   <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                    order.status === 'Clôturé'
+                    order.status === 'Closed' || order.status === 'Clôturé'
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                      : order.status === 'En cours'
+                      : order.status === 'In Progress' || order.status === 'En cours'
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
                         : 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
                   }`}>
-                    {order.status}
+                    {order.status === 'Clôturé' ? 'Closed' : order.status === 'À faire' ? 'To Do' : order.status === 'En cours' ? 'In Progress' : order.status}
                   </span>
                 </div>
 
@@ -217,7 +212,7 @@ export const FieldTechMobileView: React.FC = () => {
                 {order.signatureUrl && (
                   <div className="pt-2 flex items-center gap-2">
                     <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">
-                      ✓ Signé par client
+                      ✓ Signed by client
                     </span>
                   </div>
                 )}
@@ -229,7 +224,7 @@ export const FieldTechMobileView: React.FC = () => {
                   <span>{order.dueDate}</span>
                 </span>
 
-                {order.status !== 'Clôturé' && (
+                {order.status !== 'Closed' && order.status !== 'Clôturé' && (
                   <button
                     onClick={() => {
                       setActiveOrder(order);
@@ -239,7 +234,7 @@ export const FieldTechMobileView: React.FC = () => {
                     }}
                     className="px-3.5 py-1.5 rounded-full bg-[#d946ef]/30 hover:bg-[#d946ef]/50 text-white font-semibold text-xs border border-[#f472b6] cursor-pointer transition-colors"
                   >
-                    Traiter l'OT
+                    Process WO
                   </button>
                 )}
               </div>
@@ -252,7 +247,7 @@ export const FieldTechMobileView: React.FC = () => {
       {showQrModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
           <div className="relative w-full max-w-sm rounded-3xl bg-[#130826] border border-[#d946ef]/50 p-6 shadow-2xl space-y-6 text-center">
-            <h3 className="text-lg font-bold text-white">Caméra Scanner QR Code</h3>
+            <h3 className="text-lg font-bold text-white">QR Code Camera Scanner</h3>
             
             {/* Viewfinder simulation */}
             <div className="relative w-48 h-48 mx-auto rounded-2xl bg-black border-2 border-dashed border-[#f472b6] flex items-center justify-center overflow-hidden">
@@ -265,14 +260,14 @@ export const FieldTechMobileView: React.FC = () => {
                 {scannedEquipment}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">Pointez la caméra vers le tag NFC / QR de l'équipement...</p>
+              <p className="text-xs text-slate-400">Point the camera at the equipment NFC / QR tag...</p>
             )}
 
             <button
               onClick={() => { setShowQrModal(false); setScannedEquipment(null); }}
               className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold cursor-pointer"
             >
-              Fermer le Scanner
+              Close Scanner
             </button>
           </div>
         </div>
@@ -285,19 +280,19 @@ export const FieldTechMobileView: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Wrench className="w-5 h-5 text-[#f472b6]" />
-                <h3 className="text-base font-bold text-white">Clôture d'Intervention - {activeOrder.id}</h3>
+                <h3 className="text-base font-bold text-white">Work Order Closure - {activeOrder.id}</h3>
               </div>
               <button
                 onClick={() => setActiveOrder(null)}
                 className="text-slate-400 hover:text-white cursor-pointer text-xs"
               >
-                Fermer
+                Close
               </button>
             </div>
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="text-slate-300 block mb-1 font-semibold">Pièces de Rechange Consommées :</label>
+                <label className="text-slate-300 block mb-1 font-semibold">Spare Parts Consumed:</label>
                 <input
                   type="text"
                   value={partsUsed}
@@ -307,10 +302,10 @@ export const FieldTechMobileView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-slate-300 block mb-1 font-semibold">Preuve Visuelle (Photo du composant) :</label>
+                <label className="text-slate-300 block mb-1 font-semibold">Visual Proof (Component Photo):</label>
                 {photoUrl ? (
                   <div className="relative rounded-xl overflow-hidden border border-[#d946ef]/40 max-h-40">
-                    <img src={photoUrl} alt="Photo intervention" className="w-full h-full object-cover" />
+                    <img src={photoUrl} alt="Intervention photo" className="w-full h-full object-cover" />
                     <button
                       onClick={() => setPhotoUrl(undefined)}
                       className="absolute top-2 right-2 p-1.5 rounded-full bg-rose-500 text-white text-xs"
@@ -321,7 +316,7 @@ export const FieldTechMobileView: React.FC = () => {
                 ) : (
                   <label className="w-full py-3 rounded-xl bg-white/5 border border-dashed border-white/30 hover:border-[#f472b6] text-slate-300 flex items-center justify-center gap-2 cursor-pointer transition-colors">
                     <Camera className="w-4 h-4 text-[#f472b6]" />
-                    <span>Ajouter une photo depuis l'appareil</span>
+                    <span>Add photo from camera</span>
                     <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" />
                   </label>
                 )}
@@ -329,10 +324,10 @@ export const FieldTechMobileView: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-300 font-semibold">Signature Client / Responsable Site :</label>
+                  <label className="text-slate-300 font-semibold">Client / Site Manager Signature:</label>
                   {signatureSigned && (
                     <button onClick={clearSignature} className="text-[10px] text-rose-400 hover:underline">
-                      Effacer
+                      Clear
                     </button>
                   )}
                 </div>
@@ -352,7 +347,7 @@ export const FieldTechMobileView: React.FC = () => {
                   />
                   {!signatureSigned && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-slate-500 text-xs italic">
-                      Dessinez la signature ici avec le doigt ou la souris...
+                      Draw signature here using finger or mouse...
                     </div>
                   )}
                 </div>
@@ -364,7 +359,7 @@ export const FieldTechMobileView: React.FC = () => {
               className="w-full py-3.5 rounded-xl bizos-cta-pink text-white font-bold text-xs shadow-lg cursor-pointer flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Valider & Clôturer l'Ordre d'Intervention</span>
+              <span>Validate & Close Work Order</span>
             </button>
           </div>
         </div>

@@ -154,7 +154,7 @@ export const InboxAiView: React.FC<InboxAiViewProps> = ({ setCurrentPage }) => {
               <Search className="w-4 h-4 text-slate-400 mr-2" />
               <input 
                 type="text" 
-                placeholder="Rechercher partout..." 
+                placeholder="Search everywhere..." 
                 className="bg-transparent border-none text-xs text-white focus:outline-none w-full placeholder-slate-500"
               />
             </div>

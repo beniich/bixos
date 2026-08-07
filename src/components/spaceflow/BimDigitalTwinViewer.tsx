@@ -220,7 +220,7 @@ export const BimDigitalTwinViewer: React.FC = () => {
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Rechercher un composant BIM..."
+                placeholder="Search BIM component..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-[#1e0f38] border border-white/20 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#f472b6]"

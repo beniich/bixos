@@ -1,16 +1,9 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import cookieParser from 'cookie-parser';
-import { authRouter } from './src/api/auth/routes';
 
 export const app = express();
 app.use(express.json());
-app.use(cookieParser());
-
-// ===== STRICT AUTH ROUTES =====
-app.use('/api/auth', authRouter);
-
 
 // ==========================================
 // SPACEFLOW COWORKING DATABASE STORE & APIS
@@ -885,75 +878,6 @@ app.use('/api/auth', authRouter);
     if (!lic) return res.status(404).json({ error: 'Licence non trouvée' });
     lic.status = 'REVOKED';
     res.json(lic);
-  });
-
-  // ==========================================
-  // SUBSCRIPTION & STRIPE CHECKOUT API
-  // ==========================================
-
-  const SUBSCRIPTION_PLANS: Record<string, { name: string; price: number; currency: string; stripePriceId: string }> = {
-    starter:    { name: 'BizOS Starter',      price: 4900,  currency: 'eur', stripePriceId: process.env.STRIPE_PRICE_STARTER    || 'price_starter_test'    },
-    pro:        { name: 'BizOS Professional', price: 14900, currency: 'eur', stripePriceId: process.env.STRIPE_PRICE_PRO        || 'price_pro_test'        },
-    enterprise: { name: 'BizOS Enterprise',   price: 0,     currency: 'eur', stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE || 'price_enterprise_test' },
-  };
-
-  app.post('/api/subscription/create-session', async (req, res) => {
-    const { planId, userId, successUrl, cancelUrl } = req.body;
-
-    if (!planId || !SUBSCRIPTION_PLANS[planId]) {
-      return res.status(400).json({ error: 'Plan invalide. Choisissez: starter, pro ou enterprise.' });
-    }
-
-    // Enterprise → contact sales redirect (no Stripe session)
-    if (planId === 'enterprise') {
-      return res.json({ url: `mailto:sales@bizos.io?subject=Enterprise%20Plan%20Inquiry`, planId });
-    }
-
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey || stripeKey === '') {
-      // Demo mode – no Stripe configured
-      return res.json({
-        url: null,
-        demo: true,
-        message: 'Stripe non configuré — mode démo. Configurez STRIPE_SECRET_KEY dans .env.local pour activer les paiements.',
-        planId,
-        plan: SUBSCRIPTION_PLANS[planId],
-      });
-    }
-
-    try {
-      const Stripe = (await import('stripe')).default;
-      const stripe = new Stripe(stripeKey, { apiVersion: '2025-01-27.acacia' });
-
-      const plan = SUBSCRIPTION_PLANS[planId];
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        payment_method_types: ['card'],
-        line_items: [{
-          price: plan.stripePriceId,
-          quantity: 1,
-        }],
-        metadata: { planId, userId: userId || '' },
-        success_url: successUrl || `${req.headers.origin || 'http://localhost:3000'}?subscription=success&plan=${planId}`,
-        cancel_url:  cancelUrl  || `${req.headers.origin || 'http://localhost:3000'}?subscription=cancelled`,
-      });
-
-      res.json({ url: session.url, sessionId: session.id, planId });
-    } catch (err: any) {
-      console.error('[Subscription] Stripe error:', err.message);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // GET /api/subscription/plans — Return available plans metadata
-  app.get('/api/subscription/plans', (_req, res) => {
-    res.json({
-      plans: [
-        { id: 'starter',    name: 'Starter',      price: 49,  currency: 'EUR', features: ['50 membres', 'Réservations basiques', 'Support email', '1 site'] },
-        { id: 'pro',        name: 'Professional', price: 149, currency: 'EUR', features: ['Membres illimités', 'Analytics avancées', 'Support 24/7', '3 sites', 'Marque personnalisée'] },
-        { id: 'enterprise', name: 'Enterprise',   price: null,currency: 'EUR', features: ['Tout illimité', 'Account manager dédié', 'SLA garanti', 'Intégrations custom', 'API access'] },
-      ]
-    });
   });
 
   app.post('/api/licenses/validate', (req, res) => {

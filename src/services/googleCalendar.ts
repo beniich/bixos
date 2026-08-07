@@ -22,7 +22,7 @@ export interface GoogleCalendarEvent {
     responseStatus?: 'needsAction' | 'declined' | 'tentative' | 'accepted';
   }>;
   spaceId?: string;
-  isSpaceFlowBooking?: boolean;
+  isBizosBooking?: boolean;
 }
 
 export interface GoogleCalendarStatusResponse {
@@ -92,32 +92,32 @@ export const googleCalendarService = {
       return [
         {
           id: 'gcal-evt-101',
-          summary: '📅 Réunion Direction CAFM & Workspace',
-          description: 'Synchronisé depuis Google Calendar pour l\'équipe SpaceFlow',
-          location: 'Salle Alpha - Étage 1',
+          summary: '📅 CAFM & Workspace Management Meeting',
+          description: 'Synced from Google Calendar for the BizOS team',
+          location: 'Room Alpha - Floor 1',
           start: { dateTime: new Date(Date.now() + 2 * 3600 * 1000).toISOString() },
           end: { dateTime: new Date(Date.now() + 4 * 3600 * 1000).toISOString() },
           status: 'confirmed',
           organizer: { email: 'albertomodo.cc@gmail.com', displayName: 'Alberto Modo' },
-          isSpaceFlowBooking: false
+          isBizosBooking: false
         },
         {
           id: 'gcal-evt-102',
-          summary: '🚀 Session Pitch Client Startups',
-          description: 'Réservation Loft Événementiel',
-          location: 'Loft Événementiel - Bât B',
+          summary: '🚀 Startup Client Pitch Session',
+          description: 'Event Loft Booking',
+          location: 'Event Loft - Building B',
           start: { dateTime: new Date(Date.now() + 26 * 3600 * 1000).toISOString() },
           end: { dateTime: new Date(Date.now() + 29 * 3600 * 1000).toISOString() },
           status: 'confirmed',
           organizer: { email: 'jean.dupont@techcorp.io', displayName: 'Jean Dupont' },
-          isSpaceFlowBooking: true
+          isBizosBooking: true
         }
       ];
     }
   },
 
   /**
-   * Synchronise une réservation SpaceFlow avec l'API Google Calendar
+   * Synchronizes a BizOS booking with the Google Calendar API
    */
   async syncBooking(payload: SyncBookingPayload): Promise<{ success: boolean; eventId?: string; message: string }> {
     try {
@@ -127,7 +127,7 @@ export const googleCalendarService = {
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
-        throw new Error('Échec de la synchronisation Google Calendar');
+        throw new Error('Google Calendar synchronization failed');
       }
       return await res.json();
     } catch (err: any) {
@@ -135,7 +135,7 @@ export const googleCalendarService = {
       return {
         success: true,
         eventId: `gcal-sync-${Date.now()}`,
-        message: 'Réservation synchronisée avec l\'agenda Google Calendar !'
+        message: 'Booking synchronized with Google Calendar agenda!'
       };
     }
   },

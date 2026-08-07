@@ -69,7 +69,7 @@ export const CallCopilotView: React.FC<CallCopilotViewProps> = ({ setCurrentPage
           }`}
         >
           <PhoneCall className="w-4 h-4" />
-          <span>{callActive ? 'Terminer l\'Appel en Direct' : 'Démarrer la Démo d\'Appel'}</span>
+          <span>{callActive ? 'End Live Call' : 'Start Demo Call'}</span>
         </button>
       </header>
 
@@ -182,7 +182,7 @@ export const CallCopilotView: React.FC<CallCopilotViewProps> = ({ setCurrentPage
                 onClick={() => handleSimulateObjection('integration')}
                 className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[#03b5d3]/50 text-[11px] font-bold text-slate-300 hover:text-white transition-all cursor-pointer"
               >
-                Délai Migration
+                Migration Delay
               </button>
             </div>
           </div>
@@ -190,7 +190,7 @@ export const CallCopilotView: React.FC<CallCopilotViewProps> = ({ setCurrentPage
           {crmLogged && (
             <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2 animate-pulse">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Compte-rendu et objections automatiquement synchronisés dans Salesforce / HubSpot !</span>
+              <span>Call notes and objections automatically synced to Salesforce / HubSpot!</span>
             </div>
           )}
 

@@ -4,6 +4,7 @@ import {
   ChevronDown, Moon, Sun, LogIn, Mail, Sparkles, Shield, Cpu, Zap, Globe
 } from 'lucide-react';
 import { useLanguageContext } from '../../context/LanguageContext';
+import { BizosLogo } from '../common/BizosLogo';
 
 interface SpaceflowHeaderProps {
   currentPage: PageId;
@@ -34,31 +35,13 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
     <header className="sticky top-4 z-50 max-w-7xl mx-auto px-4 sm:px-6">
       <div className="bizos-header-glow rounded-2xl px-5 h-16 flex items-center justify-between gap-4">
         
-        {/* Brand Logo with Glowing Purple Chip & Circuit Traces (Exact screenshot match) */}
+        {/* Brand Logo with Glowing Purple Chip & Circuit Traces */}
         <div className="flex items-center">
           <button 
             onClick={() => setCurrentPage('home')}
-            className="flex items-center gap-3 cursor-pointer group text-left"
+            className="flex items-center cursor-pointer group text-left"
           >
-            {/* Chip with B logo and circuit lines */}
-            <div className="relative flex items-center justify-center">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d946ef]/20 to-[#8b5cf6]/30 border border-[#d946ef]/60 flex items-center justify-center text-white shadow-[0_0_15px_rgba(217,70,239,0.4)] group-hover:scale-105 transition-transform overflow-hidden">
-                <span className="font-extrabold text-xl text-[#f472b6] tracking-tighter drop-shadow-[0_0_8px_rgba(244,114,182,0.8)] font-serif">B</span>
-                {/* Micro Circuit lines SVG background */}
-                <svg className="absolute inset-0 w-full h-full opacity-40 pointer-events-none" viewBox="0 0 40 40">
-                  <path d="M0 20 H12 M28 20 H40 M20 0 V12 M20 28 V40 M8 8 L14 14 M32 8 L26 14" stroke="#d946ef" strokeWidth="1.5" strokeLinecap="round" />
-                  <circle cx="12" cy="20" r="1.5" fill="#f472b6" />
-                  <circle cx="28" cy="20" r="1.5" fill="#f472b6" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="hidden sm:block">
-              <div className="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
-                <span>BizOS</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#d946ef]/20 border border-[#d946ef]/40 text-[#f472b6] font-mono uppercase">GMAO / CAFM</span>
-              </div>
-            </div>
+            <BizosLogo size="md" />
           </button>
         </div>
 
@@ -204,17 +187,11 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
           {googleUser || isLoggedIn ? (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage('subscription')}
-                className="px-4 py-2 rounded-full bg-white/5 border border-white/20 hover:border-blue-400 text-xs font-medium text-slate-300 hover:text-white transition-all cursor-pointer hidden sm:block"
-              >
-                Abonnement
-              </button>
-              <button
                 onClick={() => setCurrentPage('settings')}
                 className="px-4 py-2 rounded-full bg-white/5 border border-white/20 hover:border-[#f472b6] text-xs font-medium text-white transition-all cursor-pointer flex items-center gap-2"
               >
                 <span className="w-2 h-2 rounded-full bg-[#f472b6] animate-pulse" />
-                <span>Mon Espace</span>
+                <span>My Workspace</span>
               </button>
               <button
                 onClick={() => {
@@ -222,7 +199,7 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
                   setIsLoggedIn(false);
                 }}
                 className="p-2 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-white text-xs cursor-pointer transition-all"
-                title="Déconnexion"
+                title="Sign Out"
               >
                 <LogIn className="w-4 h-4 rotate-180" />
               </button>
@@ -233,19 +210,13 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
                 onClick={() => setCurrentPage('login')}
                 className="px-5 py-2 rounded-full bg-white/5 border border-white/20 hover:bg-white/10 text-xs font-medium text-white transition-all cursor-pointer"
               >
-                Connexion
+                {t('navLogin')}
               </button>
               <button
-                onClick={() => setCurrentPage('subscription')}
-                className="px-3 py-2 rounded-full bg-white/5 border border-white/20 hover:bg-white/10 text-xs font-medium text-slate-300 transition-all cursor-pointer hidden sm:block"
-              >
-                Plans
-              </button>
-              <button
-                onClick={() => setCurrentPage('register')}
+                onClick={() => setCurrentPage('login')}
                 className="px-6 py-2 rounded-full bizos-cta-pink text-xs font-semibold text-white transition-all cursor-pointer shadow-[0_0_20px_rgba(217,70,239,0.4)]"
               >
-                Démarrer gratuitement
+                {t('getStarted')}
               </button>
             </div>
           )}

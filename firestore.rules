@@ -5,6 +5,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /test/{testId} {
+      allow read, write: if true;
+    }
+
+    match /organizations/{organizationId} {
+      allow read, write: if true;
+    }
+
     match /work_orders/{workOrderId} {
       allow read, write: if true;
     }
@@ -14,6 +26,22 @@ service cloud.firestore {
     }
 
     match /energy_settings/{settingId} {
+      allow read, write: if true;
+    }
+
+    match /sites/{siteId} {
+      allow read, write: if true;
+    }
+
+    match /collaborator_entries/{entryId} {
+      allow read, write: if true;
+    }
+
+    match /members/{memberId} {
+      allow read, write: if true;
+    }
+
+    match /visitors/{visitorId} {
       allow read, write: if true;
     }
   }
