@@ -67,7 +67,7 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return sessionStorage.getItem('cafm_admin_authenticated') === 'true';
   });
-  const [adminEmailInput, setAdminEmailInput] = useState('tarikbenaich@gmail.com');
+  const [adminEmailInput, setAdminEmailInput] = useState('admin@bizos.com');
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
 
@@ -115,7 +115,7 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
     const emailTrimmed = adminEmailInput.trim().toLowerCase();
     const passTrimmed = adminPasswordInput.trim();
 
-    if (emailTrimmed === 'tarikbenaich@gmail.com' && passTrimmed === '0000_-tr') {
+    if (emailTrimmed === 'admin@bizos.com' && passTrimmed === 'demo123') {
       sessionStorage.setItem('cafm_admin_authenticated', 'true');
       setIsAdminAuthenticated(true);
       showToast('Authentification Administrateur Réussie');
@@ -210,7 +210,7 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
                 required
                 value={adminEmailInput}
                 onChange={(e) => setAdminEmailInput(e.target.value)}
-                placeholder="tarikbenaich@gmail.com"
+                placeholder="admin@bizos.com"
                 className="w-full bg-black/40 border border-white/15 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-orange-500 font-mono"
               />
             </div>
@@ -247,8 +247,8 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
 
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-gray-400 space-y-1 font-mono">
             <div className="text-gray-300 font-bold">Accès autorisé :</div>
-            <div>User: <span className="text-orange-400">tarikbenaich@gmail.com</span></div>
-            <div>Passe: <span className="text-orange-400">0000_-tr</span></div>
+            <div>User: <span className="text-orange-400">admin@bizos.com</span></div>
+            <div>Passe: <span className="text-orange-400">demo123</span></div>
           </div>
         </div>
       </div>
@@ -278,7 +278,7 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-mono text-emerald-300">
                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                <span>Connecté: tarikbenaich@gmail.com</span>
+                <span>Connecté: admin@bizos.com</span>
               </span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">

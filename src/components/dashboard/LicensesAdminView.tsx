@@ -56,13 +56,13 @@ export const LicensesAdminView: React.FC<LicensesAdminViewProps> = ({ isDarkMode
             }
           })
           .catch(() => {});
-      } else if (email === 'tarikbenaich@gmail.com' && password === '0000_-tr') {
+      } else if (email === 'admin@bizos.com' && password === 'demo123') {
         setIsAuthenticated(true);
       } else {
         setAuthError(data.error || 'Identifiants administrateur incorrects.');
       }
     } catch {
-      if (email === 'tarikbenaich@gmail.com' && password === '0000_-tr') {
+      if (email === 'admin@bizos.com' && password === 'demo123') {
         setIsAuthenticated(true);
       } else {
         setAuthError('Erreur de connexion au serveur d\'authentification.');
@@ -96,7 +96,7 @@ export const LicensesAdminView: React.FC<LicensesAdminViewProps> = ({ isDarkMode
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tarikbenaich@gmail.com"
+                placeholder="admin@bizos.com"
                 className={`w-full ${isDarkMode ? 'bg-black/30 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-xl px-3 py-2.5`}
               />
             </div>
