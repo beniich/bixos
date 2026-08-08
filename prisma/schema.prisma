@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -78,18 +77,34 @@ model Organization {
 
 // 2. USERS & ADMINISTRATORS
 model User {
-  id             String       @id @default(uuid())
-  email          String       @unique
-  passwordHash   String
-  name           String
-  role           Role         @default(FACILITY_MANAGER)
-  isSuperAdmin   Boolean      @default(false)
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                 String        @id @default(uuid())
+  email              String        @unique
+  passwordHash       String
+  name               String
+  role               Role          @default(FACILITY_MANAGER)
+  isSuperAdmin       Boolean       @default(false)
+  organizationId     String?
+  organization       Organization? @relation(fields: [organizationId], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  assignedWorkOrders WorkOrder[] @relation("AssignedTechnician")
+  // Auth security fields
+  emailVerified      Boolean       @default(false)
+  twoFactorEnabled   Boolean       @default(false)
+  twoFactorSecret    String?       // TOTP secret (encrypted)
+  failedLoginCount   Int           @default(0)
+  failedLoginAt      DateTime?
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  lastLoginIp        String?
+  passwordChangedAt  DateTime?
+  mustChangePassword Boolean       @default(false)
+  deletedAt          DateTime?     // Soft delete
+
+  assignedWorkOrders WorkOrder[]   @relation("AssignedTechnician")
+  sessions           Session[]
+  gmailConfig        GmailConfig?
+  backupCodes        TwoFactorBackupCode[]
 }
 
 // 3. LICENSE KEYS (Pre-generated single-use stock keys)
@@ -194,4 +209,194 @@ model WorkOrder {
 
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+// 8. SESSIONS (Multi-device Auth)
+model Session {
+  id                 String        @id @default(uuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash   String
+  userAgentHash      String?
+  ipAddress          String?
+  geoCountry         String?
+  deviceType         String?
+  status             SessionStatus @default(ACTIVE)
+  
+  issuedAt           DateTime      @default(now())
+  lastUsedAt         DateTime      @default(now())
+  expiresAt          DateTime
+  
+  revokedAt          DateTime?
+  revokedReason      String?
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+}
+
+// 9. GMAIL CONFIG (Per-User Integration)
+model GmailConfig {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptedAccessToken  String?
+  encryptedRefreshToken String?
+  tokenExpiresAt        DateTime?
+  gmailEmail            String?
+  isActive              Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+// ==========================================
+// AUTH SECURITY MODELS
+// ==========================================
+
+enum AuthEventType {
+  REGISTER
+  EMAIL_VERIFIED
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  SESSION_REVOKED
+  SESSIONS_REVOKED_ALL
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  TWO_FA_ENABLED
+  TWO_FA_DISABLED
+  BACKUP_CODE_USED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SUSPICIOUS_ACTIVITY
+}
+
+// Audit log immutable de tous les événements auth
+model AuthAuditLog {
+  id             String        @id @default(uuid())
+  eventType      AuthEventType
+  userId         String?
+  organizationId String?
+  email          String?
+  ipAddress      String?
+  userAgent      String?
+  geoCountry     String?
+  success        Boolean       @default(true)
+  failureReason  String?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+
+  @@index([userId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+// Tentatives de connexion (par IP/email pour le lockout)
+model LoginAttempt {
+  id            String   @id @default(uuid())
+  userId        String?
+  email         String
+  ipAddress     String
+  userAgent     String?
+  success       Boolean
+  failureReason String?
+  attemptedAt   DateTime @default(now())
+
+  @@index([email])
+  @@index([ipAddress])
+  @@index([attemptedAt])
+}
+
+// Verrouillage de compte
+model AccountLockout {
+  id          String    @id @default(uuid())
+  userId      String?
+  email       String
+  ipAddress   String?
+  reason      String
+  expiresAt   DateTime
+  unlockedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+// Vérification d'email
+model EmailVerification {
+  id          String    @id @default(uuid())
+  userId      String
+  email       String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  verifiedAt  DateTime?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// Réinitialisation de mot de passe
+model PasswordReset {
+  id             String    @id @default(uuid())
+  userId         String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  invalidatedAt  DateTime?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// Historique des mots de passe (anti-réutilisation)
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Codes de secours 2FA
+model TwoFactorBackupCode {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Secrets TOTP 2FA (un par utilisateur)
+model TwoFactorSecret {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  method              String    @default("TOTP")
+  secretEncrypted     String
+  backupCodesHashed   String[]
+  enabledAt           DateTime?
+  lastUsedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([userId])
 }

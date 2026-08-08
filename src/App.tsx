@@ -17,11 +17,26 @@ import { ExitReadyView } from './components/spaceflow/ExitReadyView';
 import { CallCopilotView } from './components/spaceflow/CallCopilotView';
 import { SchemaView } from './components/spaceflow/SchemaView';
 import { GoogleAuthGateModal } from './components/spaceflow/GoogleAuthGateModal';
+import { CafmGmaoDashboard } from './components/spaceflow/CafmGmaoDashboard';
+import { WpPluginExtensionView } from './components/spaceflow/WpPluginExtensionView';
+
+import { SuperAdminDashboard } from './components/admin/SuperAdminDashboard';
+import { UsersManagementPage } from './components/admin/UsersManagementPage';
+import { EnvironmentsPage } from './components/admin/EnvironmentsPage';
+import { CAFMPage } from './components/admin/CAFMPage';
 
 import { ArchitecturePage } from './components/pages/ArchitecturePage';
 import { PricingPage } from './components/pages/PricingPage';
 import { SupportPage } from './components/pages/SupportPage';
 import { LoginPage } from './components/pages/LoginPage';
+import { DemoPage } from './components/pages/DemoPage';
+import { VisionPage } from './components/pages/VisionPage';
+import { SecurityPage } from './components/pages/SecurityPage';
+import { TestimonialsPage } from './components/pages/TestimonialsPage';
+import { ChangelogPage } from './components/pages/ChangelogPage';
+import { BlogPage } from './components/pages/BlogPage';
+import { ContactPage } from './components/pages/ContactPage';
+import { WorkspacePage } from './components/pages/WorkspacePage';
 import { Footer } from './components/Footer';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
@@ -153,7 +168,7 @@ export function App() {
           )}
 
           {activePage === 'dashboard' && (
-            <ManagerDashboardView isDarkMode={isDarkMode} setCurrentPage={handleNavigate} />
+            <ManagerDashboardView isDarkMode={isDarkMode} onNavigate={handleNavigate} />
           )}
 
           {activePage === 'members' && (
@@ -169,7 +184,7 @@ export function App() {
           )}
 
           {activePage === 'analytics' && (
-            <AnalyticsAiView isDarkMode={isDarkMode} />
+            <AnalyticsAiView />
           )}
 
           {activePage === 'mobile_pwa' && (
@@ -222,6 +237,56 @@ export function App() {
 
           {activePage === 'login' && (
             <LoginPage onNavigate={handleNavigate} language={language} brand="BizOS GMAO" />
+          )}
+
+          {/* ── CAFM / GMAO ── */}
+          {activePage === 'cafm_gmao' && (
+            <CafmGmaoDashboard />
+          )}
+
+          {/* ── ADMIN SUPER ── */}
+          {activePage === 'admin_super' && (
+            <SuperAdminDashboard setCurrentPage={handleNavigate} />
+          )}
+          {activePage === 'admin_users' && (
+            <UsersManagementPage />
+          )}
+          {activePage === 'admin_environments' && (
+            <EnvironmentsPage />
+          )}
+          {activePage === 'admin_cafm' && (
+            <CAFMPage />
+          )}
+
+          {/* ── WP PLUGIN ── */}
+          {activePage === 'wp_plugin' && (
+            <WpPluginExtensionView />
+          )}
+
+          {/* ── PAGES PUBLIQUES ── */}
+          {activePage === 'demo' && (
+            <DemoPage onNavigate={handleNavigate} language={language} />
+          )}
+          {activePage === 'vision' && (
+            <VisionPage onNavigate={handleNavigate} language={language} />
+          )}
+          {activePage === 'security' && (
+            <SecurityPage onNavigate={handleNavigate} language={language} />
+          )}
+          {activePage === 'testimonials' && (
+            <TestimonialsPage onNavigate={handleNavigate} language={language} />
+          )}
+          {activePage === 'changelog' && (
+            <ChangelogPage onNavigate={handleNavigate} language={language} />
+          )}
+          {activePage === 'blog' && (
+            <BlogPage onNavigate={handleNavigate} language={language} />
+          )}
+          {activePage === 'contact' && (
+            <ContactPage onNavigate={handleNavigate} language={language} />
+          )}
+          {activePage === 'workspace' && (
+            <WorkspacePage onNavigate={handleNavigate} language={language} />
           )}
         </main>
 

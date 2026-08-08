@@ -1,0 +1,8 @@
+.bizos-login-container {
+    max-width: 420px;
+    margin: 40px auto;
+    padding: 30px;
+    background: #1f2937;
+    color: #ffffff;
+    border-radius: 12px;
+}

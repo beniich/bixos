@@ -41,7 +41,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
   const handleLogout = () => {
     showToast('Logout initiated...');
     setTimeout(() => {
-      if (onNavigate) onNavigate('manager_dashboard');
+      if (onNavigate) onNavigate('dashboard');
     }, 1000);
   };
 

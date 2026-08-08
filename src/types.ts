@@ -1,6 +1,11 @@
 export type PageId =
   | 'home'
   | 'dashboard'
+  | 'cafm_gmao'
+  | 'admin_super'
+  | 'admin_users'
+  | 'admin_environments'
+  | 'admin_cafm'
   | 'today'
   | 'members'
   | 'bookings'
@@ -26,7 +31,8 @@ export type PageId =
   | 'inbox_ai'
   | 'call_copilot'
   | 'exit_ready'
-  | 'schema';
+  | 'schema'
+  | 'wp_plugin';
 
 // ==========================================
 // BIZOS GMAO & CAFM TYPES
@@ -262,7 +268,7 @@ export type BackgroundTheme =
   | 'brain'
   | 'map';
 
-export type BrandVariant = 'CAFM Pro' | 'Sovereign Device Nexus' | 'ReclamTrack Pro';
+export type BrandVariant = 'CAFM Pro' | 'Sovereign Device Nexus' | 'ReclamTrack Pro' | 'BizOS GMAO';
 
 export interface PricingPlan {
   id: string;

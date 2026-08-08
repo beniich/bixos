@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fichiers autorisés"
+paths = [
+  '''package-lock\.json''',
+  '''yarn\.lock''',
+  '''pnpm-lock\.yaml''',
+  '''\.env\.example''',
+  '''bun\.lockb''',
+  '''bun\.lock'''
+]

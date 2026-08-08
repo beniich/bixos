@@ -6,3 +6,21 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Firebase
+firebase-adminsdk*.json
+service-account*.json
+*-firebase-adminsdk.json
+google-services.json
+GoogleService-Info.plist
+firebase-admin-key.json
+
+# Clés et certificats
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.credentials/
+credentials.json
+config/local.json

@@ -10,6 +10,12 @@ const prisma = new PrismaClient();
 const ISSUER = 'BizOS';
 const BACKUP_CODES_COUNT = 10;
 
+interface TwoFactorSetup {
+  secret: string;
+  qrCodeDataUrl: string;
+  backupCodes: string[];
+}
+
 /** Initialise la config 2FA TOTP pour un utilisateur */
 export async function initiate2FASetup(userId: string, userEmail: string): Promise<TwoFactorSetup> {
   const secret = new OTPAuth.Secret({ size: 32 });

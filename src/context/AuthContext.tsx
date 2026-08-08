@@ -29,11 +29,32 @@ export interface UserProfile {
   lastLoginAt?: string;
 }
 
+interface LoginOptions {
+  rememberMe?: boolean;
+  twoFactorCode?: string;
+}
+
+interface LoginResult {
+  success: boolean;
+  requiresTwoFactor?: boolean;
+  accessToken?: string;
+  error?: string;
+  lockedUntil?: string;
+}
+
+interface RegisterResult {
+  success: boolean;
+  error?: string;
+  details?: string[];
+}
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
+  login: (email: string, password: string, opts?: LoginOptions) => Promise<LoginResult>;
+  register: (email: string, password: string, name: string) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   updateRole: (role: 'Admin' | 'Collaborateur' | 'Technicien') => Promise<void>;
   switchOrganization: (orgId: string, orgName: string) => Promise<void>;
@@ -51,6 +72,8 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   loginWithGoogle: async () => {},
+  login: async () => ({ success: false }),
+  register: async () => ({ success: false }),
   logout: async () => {},
   updateRole: async () => {},
   switchOrganization: async () => {},
@@ -129,6 +152,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error signing in with Google:', error);
       throw error;
+    }
+  };
+
+  /** Login via l'API Express JWT (email + password) */
+  const login = async (email: string, password: string, opts?: LoginOptions): Promise<LoginResult> => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, ...opts }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.accessToken) {
+          localStorage.setItem('biz_access_token', data.accessToken);
+        }
+        return { success: true, accessToken: data.accessToken, requiresTwoFactor: data.requiresTwoFactor };
+      }
+      return { success: false, error: data.message || data.error, lockedUntil: data.until };
+    } catch {
+      return { success: false, error: 'Erreur réseau' };
+    }
+  };
+
+  /** Création de compte via l'API Express JWT */
+  const register = async (email: string, password: string, name: string): Promise<RegisterResult> => {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, name }),
+      });
+      const data = await res.json();
+      if (res.ok) return { success: true };
+      return { success: false, error: data.message || data.error };
+    } catch {
+      return { success: false, error: 'Erreur réseau' };
     }
   };
 
@@ -215,15 +277,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      profile, 
-      loading, 
-      loginWithGoogle, 
-      logout, 
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      loading,
+      loginWithGoogle,
+      login,
+      register,
+      logout,
       updateRole,
       switchOrganization,
-      createOrganization
+      createOrganization,
     }}>
       {children}
     </AuthContext.Provider>
