@@ -355,7 +355,7 @@ export const BookingsCalendarView: React.FC<BookingsCalendarViewProps> = ({ isDa
               <span>SYNCHRONIZED GOOGLE CALENDAR EVENTS ({googleEvents.length})</span>
             </h3>
             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 font-mono">
-              albertomodo.cc@gmail.com
+              demo@bizos.com
             </span>
           </div>
 

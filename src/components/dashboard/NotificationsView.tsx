@@ -121,7 +121,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({ isDarkMode
               <span>GMAIL API GOOGLE WORKSPACE CONNECTÉE</span>
             </div>
             <p className={`text-xs ${subText} mt-0.5`}>
-              Compte actif: <span className="font-mono text-orange-400">albertomodo.cc@gmail.com</span> | Scopes: gmail.readonly, gmail.send
+              Compte actif: <span className="font-mono text-orange-400">demo@bizos.com</span> | Scopes: gmail.readonly, gmail.send
             </p>
           </div>
         </div>

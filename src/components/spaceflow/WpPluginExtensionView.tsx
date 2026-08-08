@@ -19,7 +19,7 @@ export const WpPluginExtensionView: React.FC = () => {
   const [licenseKeyInput, setLicenseKeyInput] = useState('BIZOS-PRO-A7K2-9F3D-8H1N');
   const [licenseDomainInput, setLicenseDomainInput] = useState('my-wordpress-site.local');
   const [licenseValidationResult, setLicenseValidationResult] = useState<any>(null);
-  const [licenseIssueEmail, setLicenseIssueEmail] = useState('albertomodo.cc@gmail.com');
+  const [licenseIssueEmail, setLicenseIssueEmail] = useState('demo@bizos.com');
   const [licenseIssueTier, setLicenseIssueTier] = useState('pro');
   const [issuedLicenseResult, setIssuedLicenseResult] = useState<any>(null);
   const [loadingLicense, setLoadingLicense] = useState(false);

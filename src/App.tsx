@@ -74,7 +74,7 @@ export function App() {
     } else {
       // Default demo Google user connected automatically
       const demoUser: GoogleAuthUser = {
-        email: 'albertomodo.cc@gmail.com',
+        email: 'demo@bizos.com',
         name: 'Alberto Modo',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         provider: 'GOOGLE_OAUTH',

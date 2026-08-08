@@ -61,7 +61,7 @@ export const googleCalendarService = {
       console.warn('Google Calendar status check fallback:', err);
       return {
         connected: true,
-        activeAccount: 'albertomodo.cc@gmail.com',
+        activeAccount: 'demo@bizos.com',
         scopesAuthorized: [
           'https://www.googleapis.com/auth/calendar.events',
           'https://www.googleapis.com/auth/calendar.readonly'
@@ -98,7 +98,7 @@ export const googleCalendarService = {
           start: { dateTime: new Date(Date.now() + 2 * 3600 * 1000).toISOString() },
           end: { dateTime: new Date(Date.now() + 4 * 3600 * 1000).toISOString() },
           status: 'confirmed',
-          organizer: { email: 'albertomodo.cc@gmail.com', displayName: 'Alberto Modo' },
+          organizer: { email: 'demo@bizos.com', displayName: 'Demo Admin' },
           isBizosBooking: false
         },
         {
