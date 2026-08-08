@@ -18,10 +18,8 @@ export function SuperAdminDashboard({ setCurrentPage }: any) {
   useEffect(() => {
     if (!profile?.organizationId) return;
 
-    // Default mocks
-    setCounts({ users: 12, environments: 5, assets: 45, claims: 8, openClaims: 3 });
-    setUsersByRole({ SUPER_ADMIN: 1, TECHNICIAN: 4, COLLABORATOR: 7 });
-    setAssetsByStatus({ OPERATIONAL: 38, MAINTENANCE: 4, BROKEN: 3 });
+    // En production, il faut interroger l'API backend pour obtenir ces statistiques
+    // ex: fetch('/api/admin/stats').then(res => res.json()).then(data => setCounts(data))
   }, [profile?.organizationId]);
 
   if (profile?.role !== 'Admin' && profile?.role !== 'SUPER_ADMIN' as any) {

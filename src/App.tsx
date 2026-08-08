@@ -39,12 +39,12 @@ import { ContactPage } from './components/pages/ContactPage';
 import { WorkspacePage } from './components/pages/WorkspacePage';
 import { Footer } from './components/Footer';
 import { LanguageProvider } from './context/LanguageContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export function App() {
+function AppContent() {
+  const { user, profile, logout } = useAuth();
   const [activePage, setActivePage] = useState<PageId>('home');
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [language, setLanguage] = useState<Language>(() => {
     const savedLang = localStorage.getItem('bizos_lang');
     return (savedLang as Language) || 'EN';
@@ -54,67 +54,47 @@ export function App() {
     setLanguage(lang);
     localStorage.setItem('bizos_lang', lang);
   };
-  const [googleUser, setGoogleUser] = useState<GoogleAuthUser | null>(null);
+  
   const [showAuthGateModal, setShowAuthGateModal] = useState(false);
   const [pendingTargetPage, setPendingTargetPage] = useState<PageId | null>(null);
 
-  useEffect(() => {
-    // Check local storage for existing Google OAuth session
-    const saved = localStorage.getItem('bizos_google_user');
-    if (saved) {
-      try {
-        const user = JSON.parse(saved);
-        if (user && user.email) {
-          setGoogleUser(user);
-          setIsLoggedIn(true);
-        }
-      } catch {
-        // ignore
-      }
-    } else {
-      // Default demo Google user connected automatically
-      const demoUser: GoogleAuthUser = {
-        email: 'demo@bizos.com',
-        name: 'Alberto Modo',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        provider: 'GOOGLE_OAUTH',
-        scopesAuthorized: [
-          'https://www.googleapis.com/auth/userinfo.profile',
-          'https://www.googleapis.com/auth/userinfo.email',
-          'https://www.googleapis.com/auth/gmail.readonly',
-        ],
-        googleToken: 'google_oauth_active_token_2026',
-        authenticatedAt: new Date().toISOString(),
-      };
-      setGoogleUser(demoUser);
-      setIsLoggedIn(true);
-    }
-  }, []);
+  // Fallback map to keep Header happy
+  const googleUser = user ? {
+    email: user.email || 'demo@bizos.com',
+    name: user.displayName || 'Utilisateur',
+    avatar: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+    provider: 'GOOGLE_OAUTH',
+    scopesAuthorized: [],
+    googleToken: '',
+    authenticatedAt: ''
+  } as GoogleAuthUser : null;
+  const isLoggedIn = !!user;
 
   const handleNavigate = (page: PageId) => {
-    const protectedPages: PageId[] = [
-      'dashboard',
-      'members',
-      'bookings',
-      'billing',
-      'analytics',
-      'visitors',
-      'settings',
+    const publicPages: PageId[] = [
+      'home', 'pricing', 'architecture', 'support', 'login', 
+      'vision', 'demo', 'contact', 'blog', 'changelog', 'testimonials'
     ];
 
-    if (protectedPages.includes(page) && !googleUser && !isLoggedIn) {
-      setPendingTargetPage(page);
-      setShowAuthGateModal(true);
-      return;
+    if (!publicPages.includes(page)) {
+      if (!isLoggedIn) {
+        setPendingTargetPage(page);
+        setActivePage('login');
+        return;
+      }
+      // Paywall strict rule
+      if (profile?.subscriptionStatus !== 'active' && profile?.role !== 'Admin' && (profile?.role as any) !== 'SUPER_ADMIN') {
+        setActivePage('pricing');
+        return;
+      }
     }
 
     setActivePage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleGoogleAuthSuccess = (user: GoogleAuthUser) => {
-    setGoogleUser(user);
-    setIsLoggedIn(true);
+  const handleGoogleAuthSuccess = (googleUser: GoogleAuthUser) => {
+    // Le AuthContext mettra à jour user/profile automatiquement.
     setShowAuthGateModal(false);
     if (pendingTargetPage) {
       setActivePage(pendingTargetPage);
@@ -125,15 +105,12 @@ export function App() {
   };
 
   const handleLogoutGoogle = () => {
-    localStorage.removeItem('bizos_google_user');
-    setGoogleUser(null);
-    setIsLoggedIn(false);
+    logout();
     setActivePage('home');
   };
 
   return (
-    <AuthProvider>
-      <LanguageProvider language={language} onLanguageChange={handleLanguageChange}>
+    <LanguageProvider language={language} onLanguageChange={handleLanguageChange}>
       <div className="min-h-screen transition-colors font-sans selection:bg-[#d946ef] selection:text-white flex flex-col justify-between bizos-bg bizos-honeycomb text-[#e2e8f0]">
         
         {/* BizOS Header Navigation */}
@@ -143,7 +120,7 @@ export function App() {
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
           isLoggedIn={isLoggedIn}
-          setIsLoggedIn={setIsLoggedIn}
+          setIsLoggedIn={() => {}}
           googleUser={googleUser}
           onLogoutGoogle={handleLogoutGoogle}
         />
@@ -295,7 +272,14 @@ export function App() {
 
       </div>
     </LanguageProvider>
-  </AuthProvider>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

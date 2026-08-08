@@ -56,17 +56,11 @@ export const LicensesAdminView: React.FC<LicensesAdminViewProps> = ({ isDarkMode
             }
           })
           .catch(() => {});
-      } else if (email === 'admin@bizos.com' && password === 'demo123') {
-        setIsAuthenticated(true);
       } else {
         setAuthError(data.error || 'Identifiants administrateur incorrects.');
       }
     } catch {
-      if (email === 'admin@bizos.com' && password === 'demo123') {
-        setIsAuthenticated(true);
-      } else {
-        setAuthError('Erreur de connexion au serveur d\'authentification.');
-      }
+      setAuthError('Erreur de connexion au serveur d\'authentification.');
     }
   };
 

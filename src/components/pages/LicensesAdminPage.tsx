@@ -115,13 +115,23 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
     const emailTrimmed = adminEmailInput.trim().toLowerCase();
     const passTrimmed = adminPasswordInput.trim();
 
-    if (emailTrimmed === 'admin@bizos.com' && passTrimmed === 'demo123') {
-      sessionStorage.setItem('cafm_admin_authenticated', 'true');
-      setIsAdminAuthenticated(true);
-      showToast('Authentification Administrateur Réussie');
-    } else {
-      setAdminAuthError('Identifiants administrateur incorrects. Accès refusé.');
-    }
+    // En production, il faut interroger le backend
+    fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailTrimmed, password: passTrimmed })
+    }).then(res => res.json())
+      .then(data => {
+        if (data.success && data.user?.isSuperAdmin) {
+          sessionStorage.setItem('cafm_admin_authenticated', 'true');
+          setIsAdminAuthenticated(true);
+          showToast('Authentification Administrateur Réussie');
+        } else {
+          setAdminAuthError('Identifiants administrateur incorrects. Accès refusé.');
+        }
+      }).catch(() => {
+        setAdminAuthError('Erreur de connexion au serveur.');
+      });
   };
 
   const handleAdminLogout = () => {
@@ -248,7 +258,7 @@ export const LicensesAdminPage: React.FC<LicensesAdminPageProps> = ({ onNavigate
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-[11px] text-gray-400 space-y-1 font-mono">
             <div className="text-gray-300 font-bold">Accès autorisé :</div>
             <div>User: <span className="text-orange-400">admin@bizos.com</span></div>
-            <div>Passe: <span className="text-orange-400">demo123</span></div>
+            <div>Passe: <span className="text-orange-400">******</span></div>
           </div>
         </div>
       </div>

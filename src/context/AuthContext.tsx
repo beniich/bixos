@@ -25,6 +25,7 @@ export interface UserProfile {
   organizationId: string;
   organizationName: string;
   allowedOrganizations: OrgInfo[];
+  subscriptionStatus?: 'active' | 'inactive' | 'trial';
   createdAt?: string;
   lastLoginAt?: string;
 }
