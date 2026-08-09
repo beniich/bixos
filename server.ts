@@ -5,8 +5,14 @@ import helmet from 'helmet';
 import cors from 'cors';
 import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
+import stripeRoutes from './src/api/stripe/routes';
 
 export const app = express();
+
+// ==========================================
+// BILLING / STRIPE (Must be before global JSON parser for webhook raw body)
+// ==========================================
+app.use('/api/billing', stripeRoutes);
 
 // ==========================================
 // SECURITY MIDDLEWARES

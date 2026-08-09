@@ -6,6 +6,7 @@ import { ManagerDashboardView } from './components/spaceflow/ManagerDashboardVie
 import { MembersListView } from './components/spaceflow/MembersListView';
 import { BookingsCalendarView } from './components/spaceflow/BookingsCalendarView';
 import { BillingInvoicesView } from './components/spaceflow/BillingInvoicesView';
+import { CheckoutSuccess } from './components/billing/CheckoutSuccess';
 import { AnalyticsAiView } from './components/spaceflow/AnalyticsAiView';
 import { CoworkerMobilePwaView } from './components/spaceflow/CoworkerMobilePwaView';
 import { VisitorsView } from './components/spaceflow/VisitorsView';
@@ -150,6 +151,9 @@ function AppContent() {
 
           {activePage === 'billing' && (
             <BillingInvoicesView isDarkMode={isDarkMode} />
+          )}
+          {activePage === 'billing_success' && (
+            <CheckoutSuccess onNavigate={handleNavigate} />
           )}
 
           {activePage === 'analytics' && (

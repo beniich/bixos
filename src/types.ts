@@ -10,6 +10,7 @@ export type PageId =
   | 'members'
   | 'bookings'
   | 'billing'
+  | 'billing_success'
   | 'analytics'
   | 'mobile_pwa'
   | 'visitors'

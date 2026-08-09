@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Sparkles, Zap, Crown } from 'lucide-react';
+import { Check, Sparkles, Zap, Crown, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageId } from '../../types';
 
@@ -66,10 +66,33 @@ export function PricingPlans({ onNavigate }: { onNavigate: (p: PageId) => void }
   const { profile } = useAuth();
   const currentPlan = profile?.plan || 'trial';
 
-  const handleSelectPlan = (planId: string) => {
-    // Dans un vrai système, on redirige vers Stripe Checkout Session 
-    // avec le `planId` et `profile.organizationId`.
-    alert(`Redirection vers Stripe pour le plan ${planId} (${billing})`);
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  const handleSelectPlan = async (planId: string) => {
+    try {
+      setIsLoading(planId);
+      const token = localStorage.getItem('biz_access_token');
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ planId, billing })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la création de la session');
+      
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erreur Stripe');
+    } finally {
+      setIsLoading(null);
+    }
   };
 
   return (
@@ -154,8 +177,8 @@ export function PricingPlans({ onNavigate }: { onNavigate: (p: PageId) => void }
 
               <button
                 onClick={() => handleSelectPlan(plan.id)}
-                disabled={isCurrent}
-                className={`w-full py-3.5 rounded-xl font-bold transition-all ${
+                disabled={isCurrent || isLoading !== null}
+                className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold transition-all ${
                   isCurrent
                     ? 'bg-white/5 text-gray-500 cursor-not-allowed border border-white/10'
                     : plan.badge === 'POPULAIRE'
@@ -163,7 +186,16 @@ export function PricingPlans({ onNavigate }: { onNavigate: (p: PageId) => void }
                     : 'bg-white/10 hover:bg-white/20 border border-white/10'
                 }`}
               >
-                {isCurrent ? 'Plan Actuel' : 'Choisir ce plan'}
+                {isLoading === plan.id ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Chargement...
+                  </>
+                ) : isCurrent ? (
+                  'Plan Actuel'
+                ) : (
+                  'Choisir ce plan'
+                )}
               </button>
             </div>
           );
