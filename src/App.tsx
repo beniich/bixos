@@ -40,6 +40,7 @@ import { WorkspacePage } from './components/pages/WorkspacePage';
 import { Footer } from './components/Footer';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { RouteGuard, GuardMode } from './components/auth/RouteGuard';
 
 function AppContent() {
   const { user, profile, logout } = useAuth();
@@ -70,25 +71,15 @@ function AppContent() {
   } as GoogleAuthUser : null;
   const isLoggedIn = !!user;
 
+  const getGuardMode = (page: PageId): GuardMode => {
+    const publicPages = ['home', 'pricing', 'architecture', 'support', 'login', 'vision', 'demo', 'contact', 'blog', 'changelog', 'testimonials'];
+    const adminPages = ['admin_super', 'admin_users', 'admin_environments', 'admin_cafm'];
+    if (publicPages.includes(page)) return 'public';
+    if (adminPages.includes(page)) return 'admin-only';
+    return 'subscription-required';
+  };
+
   const handleNavigate = (page: PageId) => {
-    const publicPages: PageId[] = [
-      'home', 'pricing', 'architecture', 'support', 'login', 
-      'vision', 'demo', 'contact', 'blog', 'changelog', 'testimonials'
-    ];
-
-    if (!publicPages.includes(page)) {
-      if (!isLoggedIn) {
-        setPendingTargetPage(page);
-        setActivePage('login');
-        return;
-      }
-      // Paywall strict rule
-      if (profile?.subscriptionStatus !== 'active' && profile?.role !== 'Admin' && (profile?.role as any) !== 'SUPER_ADMIN') {
-        setActivePage('pricing');
-        return;
-      }
-    }
-
     setActivePage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -140,9 +131,10 @@ function AppContent() {
 
         {/* Main Content Area */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
-          {activePage === 'home' && (
-            <PublicHomePage isDarkMode={isDarkMode} setCurrentPage={handleNavigate} />
-          )}
+          <RouteGuard mode={getGuardMode(activePage)} activePage={activePage} onNavigate={handleNavigate}>
+            {activePage === 'home' && (
+              <PublicHomePage isDarkMode={isDarkMode} setCurrentPage={handleNavigate} />
+            )}
 
           {activePage === 'dashboard' && (
             <ManagerDashboardView isDarkMode={isDarkMode} onNavigate={handleNavigate} />
@@ -265,6 +257,7 @@ function AppContent() {
           {activePage === 'workspace' && (
             <WorkspacePage onNavigate={handleNavigate} language={language} />
           )}
+          </RouteGuard>
         </main>
 
         {/* Footer */}

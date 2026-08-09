@@ -1,77 +1,91 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
-  User, 
-  signInWithPopup, 
-  signOut as firebaseSignOut, 
+  User as FirebaseUser,
+  signInWithPopup,
+  signOut as firebaseSignOut,
   onAuthStateChanged,
   googleProvider,
   auth,
   db
 } from '../services/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { UserRole } from '../types/database';
+
+export type SubscriptionStatus =
+  | 'trial' | 'active' | 'past_due' | 'cancelled' | 'expired' | 'suspended';
 
 export interface OrgInfo {
   id: string;
   name: string;
-  role: 'Admin' | 'Collaborateur' | 'Technicien';
+  role: UserRole;
 }
 
 export interface UserProfile {
+  // Identity
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  role: 'Admin' | 'Collaborateur' | 'Technicien';
+  phone: string | null;
+  
+  // Tenant
   organizationId: string;
   organizationName: string;
   allowedOrganizations: OrgInfo[];
-  subscriptionStatus?: 'active' | 'inactive' | 'trial';
-  createdAt?: string;
-  lastLoginAt?: string;
-}
-
-interface LoginOptions {
-  rememberMe?: boolean;
-  twoFactorCode?: string;
-}
-
-interface LoginResult {
-  success: boolean;
-  requiresTwoFactor?: boolean;
-  accessToken?: string;
-  error?: string;
-  lockedUntil?: string;
-}
-
-interface RegisterResult {
-  success: boolean;
-  error?: string;
-  details?: string[];
+  
+  // Role & permissions
+  role: UserRole;
+  permissions: string[];
+  
+  // Subscription / monetization
+  subscriptionStatus: SubscriptionStatus;
+  plan: 'trial' | 'starter' | 'pro' | 'enterprise';
+  planExpiresAt: number | null; // timestamp ms
+  trialEndsAt: number | null;
+  seatsIncluded: number;
+  seatsUsed: number;
+  
+  // Status
+  isActive: boolean;
+  isSuspended: boolean;
+  
+  // Timestamps
+  lastLoginAt: number;
+  createdAt: number;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: FirebaseUser | null;
   profile: UserProfile | null;
   loading: boolean;
+  isAuthenticated: boolean;
+  hasActiveSubscription: boolean;
+  isAdmin: boolean;
+
+  // Methods
   loginWithGoogle: () => Promise<void>;
-  login: (email: string, password: string, opts?: LoginOptions) => Promise<LoginResult>;
-  register: (email: string, password: string, name: string) => Promise<RegisterResult>;
+  login: (email: string, password: string, opts?: any) => Promise<any>;
+  register: (email: string, password: string, name: string) => Promise<any>;
   logout: () => Promise<void>;
-  updateRole: (role: 'Admin' | 'Collaborateur' | 'Technicien') => Promise<void>;
+  updateRole: (role: UserRole) => Promise<void>;
   switchOrganization: (orgId: string, orgName: string) => Promise<void>;
   createOrganization: (orgName: string) => Promise<string>;
+  hasPermission: (permission: string) => boolean;
+  hasAnyRole: (roles: UserRole[]) => boolean;
 }
 
 const DEFAULT_ORGS: OrgInfo[] = [
-  { id: 'org_bizos_global', name: 'BizOS - Siège Global Operations', role: 'Admin' },
-  { id: 'org_facility_paris', name: 'Facility Management Paris IDF', role: 'Admin' },
-  { id: 'org_lyon_industrial', name: 'Site Industriel Lyon Sud', role: 'Collaborateur' },
+  { id: 'org_bizos_global', name: 'BizOS - Siège Global Operations', role: 'SUPER_ADMIN' },
+  { id: 'org_facility_paris', name: 'Facility Management Paris IDF', role: 'SITE_ADMIN' },
 ];
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  isAuthenticated: false,
+  hasActiveSubscription: false,
+  isAdmin: false,
   loginWithGoogle: async () => {},
   login: async () => ({ success: false }),
   register: async () => ({ success: false }),
@@ -79,112 +93,175 @@ const AuthContext = createContext<AuthContextType>({
   updateRole: async () => {},
   switchOrganization: async () => {},
   createOrganization: async () => '',
+  hasPermission: () => false,
+  hasAnyRole: () => false,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        // Fetch or create Firestore user profile
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        try {
-          const snap = await getDoc(userRef);
-          if (snap.exists()) {
-            const data = snap.data();
-            setProfile({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: data.displayName || firebaseUser.displayName || 'Utilisateur BizOS',
-              photoURL: data.photoURL || firebaseUser.photoURL,
-              role: data.role || 'Admin',
-              organizationId: data.organizationId || 'org_bizos_global',
-              organizationName: data.organizationName || 'BizOS - Siège Global Operations',
-              allowedOrganizations: data.allowedOrganizations || DEFAULT_ORGS,
-              createdAt: data.createdAt,
-              lastLoginAt: new Date().toISOString(),
-            });
-          } else {
-            const newProfile: UserProfile = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName || 'Utilisateur BizOS',
-              photoURL: firebaseUser.photoURL,
-              role: 'Admin', // Default role for main user (Multi-Admin enabled)
-              organizationId: 'org_bizos_global',
-              organizationName: 'BizOS - Siège Global Operations',
-              allowedOrganizations: DEFAULT_ORGS,
-              createdAt: new Date().toISOString(),
-              lastLoginAt: new Date().toISOString(),
-            };
-            await setDoc(userRef, newProfile);
-            setProfile(newProfile);
-          }
-        } catch (err) {
-          console.error('Error loading user profile from Firestore:', err);
-          // Fallback profile if Firestore read fails
-          setProfile({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName || 'Utilisateur BizOS',
-            photoURL: firebaseUser.photoURL,
-            role: 'Admin',
-            organizationId: 'org_bizos_global',
-            organizationName: 'BizOS - Siège Global Operations',
-            allowedOrganizations: DEFAULT_ORGS,
-          });
-        }
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const loginWithGoogle = async () => {
+  // ============== LOAD USER PROFILE FROM FIRESTORE ==============
+  const loadUserProfile = async (fbUser: FirebaseUser): Promise<UserProfile | null> => {
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error('Error signing in with Google:', error);
-      throw error;
+      const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+      
+      let data: any = {};
+      
+      if (!userDoc.exists()) {
+        console.warn('[AUTH] Profil inexistant, création profil par défaut pour démo');
+        data = {
+          displayName: fbUser.displayName || 'Nouvel Utilisateur',
+          role: 'SUPER_ADMIN',
+          organizationId: 'org_bizos_global',
+          organizationName: 'BizOS - Siège Global Operations',
+          allowedOrganizations: DEFAULT_ORGS,
+          status: 'ACTIVE',
+        };
+        await setDoc(doc(db, 'users', fbUser.uid), data, { merge: true });
+      } else {
+        data = userDoc.data();
+      }
+      
+      if (data.status === 'SUSPENDED' || data.status === 'INACTIVE') {
+        return {
+          ...data,
+          uid: fbUser.uid,
+          email: fbUser.email,
+          isActive: false,
+          isSuspended: data.status === 'SUSPENDED',
+          subscriptionStatus: 'suspended'
+        } as UserProfile;
+      }
+      
+      const orgId = data.organizationId || 'org_bizos_global';
+      let orgData: any = {};
+      
+      try {
+        const orgDoc = await getDoc(doc(db, 'organizations', orgId));
+        if (orgDoc.exists()) orgData = orgDoc.data();
+      } catch (e) { console.warn("Erreur lecture org", e); }
+      
+      const now = Date.now();
+      const planExpiresAt = orgData.planExpiresAt || null;
+      // Par défaut pour un nouveau test, essai gratuit de 14j.
+      const trialEndsAt = orgData.trialEndsAt || (now + 14 * 24 * 60 * 60 * 1000); 
+      
+      let subscriptionStatus: SubscriptionStatus = orgData.subscriptionStatus || 'trial';
+      
+      if (planExpiresAt && planExpiresAt < now) {
+        subscriptionStatus = 'expired';
+      }
+      if (trialEndsAt && trialEndsAt < now && subscriptionStatus === 'trial') {
+        subscriptionStatus = 'expired';
+      }
+      
+      return {
+        uid: fbUser.uid,
+        email: fbUser.email ?? null,
+        displayName: data.displayName ?? fbUser.displayName ?? '',
+        photoURL: fbUser.photoURL,
+        phone: fbUser.phoneNumber,
+        organizationId: orgId,
+        organizationName: orgData.name ?? data.organizationName ?? 'Ma Startup',
+        allowedOrganizations: data.allowedOrganizations ?? DEFAULT_ORGS,
+        role: data.role as UserRole ?? 'COLLABORATOR',
+        permissions: data.permissions ?? [],
+        subscriptionStatus,
+        plan: orgData.plan ?? 'trial',
+        planExpiresAt,
+        trialEndsAt,
+        seatsIncluded: orgData.seatsIncluded ?? 5,
+        seatsUsed: orgData.seatsUsed ?? 0,
+        isActive: data.status !== 'SUSPENDED' && data.status !== 'INACTIVE',
+        isSuspended: data.status === 'SUSPENDED',
+        lastLoginAt: data.lastLoginAt ?? Date.now(),
+        createdAt: data.createdAt ?? Date.now(),
+      };
+    } catch (err) {
+      console.error('[AUTH] Failed to load profile', err);
+      return null;
     }
   };
 
-  /** Login via l'API Express JWT (email + password) */
-  const login = async (email: string, password: string, opts?: LoginOptions): Promise<LoginResult> => {
+  // ============== AUTH STATE LISTENER ==============
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setLoading(true);
+      if (!fbUser) {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      setUser(fbUser);
+      const userProf = await loadUserProfile(fbUser);
+      setProfile(userProf);
+      setLoading(false);
+      
+      if (userProf) {
+        setDoc(doc(db, 'users', fbUser.uid), { lastLoginAt: Date.now() }, { merge: true }).catch(() => {});
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ============== REAL-TIME PROFILE & ORG LISTENER ==============
+  useEffect(() => {
+    if (!user) return;
+    
+    const unsubUser = onSnapshot(doc(db, 'users', user.uid), async (snap) => {
+      if (snap.exists()) {
+        const p = await loadUserProfile(user);
+        setProfile(p);
+      }
+    });
+
+    let unsubOrg: (() => void) | null = null;
+    if (profile?.organizationId) {
+      unsubOrg = onSnapshot(doc(db, 'organizations', profile.organizationId), async () => {
+        const p = await loadUserProfile(user);
+        setProfile(p);
+      });
+    }
+
+    return () => {
+      unsubUser();
+      if (unsubOrg) unsubOrg();
+    };
+  }, [user, profile?.organizationId]);
+
+
+  // ============== METHODS ==============
+  const loginWithGoogle = async () => {
+    try { await signInWithPopup(auth, googleProvider); } 
+    catch (error) { console.error('Error signing in with Google:', error); throw error; }
+  };
+
+  const login = async (email: string, password: string, opts?: any): Promise<any> => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email, password, ...opts }),
       });
       const data = await res.json();
       if (res.ok) {
-        if (data.accessToken) {
-          localStorage.setItem('biz_access_token', data.accessToken);
-        }
-        return { success: true, accessToken: data.accessToken, requiresTwoFactor: data.requiresTwoFactor };
+        if (data.accessToken) localStorage.setItem('biz_access_token', data.accessToken);
+        return { success: true, accessToken: data.accessToken };
       }
-      return { success: false, error: data.message || data.error, lockedUntil: data.until };
+      return { success: false, error: data.message || data.error };
     } catch {
       return { success: false, error: 'Erreur réseau' };
     }
   };
 
-  /** Création de compte via l'API Express JWT */
-  const register = async (email: string, password: string, name: string): Promise<RegisterResult> => {
+  const register = async (email: string, password: string, name: string): Promise<any> => {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email, password, name }),
       });
       const data = await res.json();
@@ -200,95 +277,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await firebaseSignOut(auth);
       setUser(null);
       setProfile(null);
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    } catch (error) { console.error('Error signing out:', error); }
   };
 
-  const updateRole = async (role: 'Admin' | 'Collaborateur' | 'Technicien') => {
+  const updateRole = async (role: UserRole) => {
     if (!user || !profile) return;
-    const userRef = doc(db, 'users', user.uid);
-    const updated = { ...profile, role, lastLoginAt: new Date().toISOString() };
     try {
-      await setDoc(userRef, updated, { merge: true });
-      setProfile(updated);
-    } catch (err) {
-      console.error('Failed to update role in Firestore:', err);
-    }
+      await setDoc(doc(db, 'users', user.uid), { role, updatedAt: Date.now() }, { merge: true });
+    } catch (err) { console.error('Failed to update role', err); }
   };
 
   const switchOrganization = async (orgId: string, orgName: string) => {
     if (!user || !profile) return;
-    const userRef = doc(db, 'users', user.uid);
-    // Find matching org role or default to Admin
     const targetOrg = profile.allowedOrganizations.find(o => o.id === orgId);
-    const newRole = targetOrg ? targetOrg.role : 'Admin';
-
-    const updated = {
-      ...profile,
-      organizationId: orgId,
-      organizationName: orgName,
-      role: newRole,
-      lastLoginAt: new Date().toISOString(),
-    };
-
+    const newRole = targetOrg ? targetOrg.role : 'COLLABORATOR';
     try {
-      await setDoc(userRef, updated, { merge: true });
-      setProfile(updated);
-    } catch (err) {
-      console.error('Failed to switch organization in Firestore:', err);
-      // Local fallback state
-      setProfile(updated);
-    }
+      await setDoc(doc(db, 'users', user.uid), { 
+        organizationId: orgId, organizationName: orgName, role: newRole 
+      }, { merge: true });
+    } catch (err) { console.error('Failed to switch org', err); }
   };
 
   const createOrganization = async (orgName: string): Promise<string> => {
     const orgId = `org_${Date.now()}`;
-    const newOrgInfo: OrgInfo = { id: orgId, name: orgName, role: 'Admin' };
-
     if (profile && user) {
-      const updatedAllowed = [...(profile.allowedOrganizations || []), newOrgInfo];
-      const updatedProfile: UserProfile = {
-        ...profile,
-        organizationId: orgId,
-        organizationName: orgName,
-        role: 'Admin',
-        allowedOrganizations: updatedAllowed,
-      };
+      const newOrgInfo: OrgInfo = { id: orgId, name: orgName, role: 'SUPER_ADMIN' };
+      const updatedAllowed = [...profile.allowedOrganizations, newOrgInfo];
+      
+      await setDoc(doc(db, 'users', user.uid), { 
+        organizationId: orgId, organizationName: orgName, role: 'SUPER_ADMIN', allowedOrganizations: updatedAllowed
+      }, { merge: true });
 
-      try {
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, updatedProfile, { merge: true });
-        // Also seed organization doc in Firestore
-        const orgRef = doc(db, 'organizations', orgId);
-        await setDoc(orgRef, {
-          id: orgId,
-          name: orgName,
-          createdBy: user.uid,
-          createdAt: new Date().toISOString(),
-          adminUids: [user.uid],
-        });
-        setProfile(updatedProfile);
-      } catch (err) {
-        console.error('Failed to create org in Firestore:', err);
-        setProfile(updatedProfile);
-      }
+      await setDoc(doc(db, 'organizations', orgId), {
+        id: orgId, name: orgName, createdBy: user.uid, createdAt: Date.now(),
+        subscriptionStatus: 'trial', trialEndsAt: Date.now() + 14 * 24 * 60 * 60 * 1000
+      });
     }
     return orgId;
   };
 
+  // ============== HELPERS ==============
+  const hasActiveSubscription = (() => {
+    if (!profile) return false;
+    if (profile.role === 'SUPER_ADMIN') return true; 
+    return ['trial', 'active'].includes(profile.subscriptionStatus);
+  })();
+
+  const isAdmin = (() => {
+    if (!profile) return false;
+    return ['SUPER_ADMIN', 'ORG_MANAGER', 'SITE_ADMIN'].includes(profile.role);
+  })();
+
+  const hasPermission = (permission: string): boolean => {
+    if (!profile) return false;
+    if (profile.role === 'SUPER_ADMIN') return true;
+    return profile.permissions.includes(permission);
+  };
+
+  const hasAnyRole = (roles: UserRole[]): boolean => {
+    if (!profile) return false;
+    return roles.includes(profile.role);
+  };
+
   return (
     <AuthContext.Provider value={{
-      user,
-      profile,
-      loading,
-      loginWithGoogle,
-      login,
-      register,
-      logout,
-      updateRole,
-      switchOrganization,
-      createOrganization,
+      user, profile, loading, 
+      isAuthenticated: !!user && !!profile,
+      hasActiveSubscription, isAdmin,
+      loginWithGoogle, login, register, logout, updateRole, switchOrganization, createOrganization,
+      hasPermission, hasAnyRole
     }}>
       {children}
     </AuthContext.Provider>
@@ -296,4 +353,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
-

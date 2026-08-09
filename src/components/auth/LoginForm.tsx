@@ -1,188 +1,178 @@
 import React, { useState } from 'react';
+import { Mail, Lock, AlertCircle, Loader2, Eye, EyeOff, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { PageId } from '../../types';
 
-interface Props {
+interface LoginFormProps {
   onSuccess: () => void;
-  onGoRegister: () => void;
+  onGoRegister?: () => void;
+  redirectReason?: string | null;
 }
 
-export const LoginForm: React.FC<Props> = ({ onSuccess, onGoRegister }) => {
+export function LoginForm({ onSuccess, onGoRegister, redirectReason }: LoginFormProps) {
   const { login } = useAuth();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [twoFactorCode, setTwoFactorCode] = useState('');
-  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [locked, setLocked] = useState<{ until: string } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setError(null);
+    setSubmitting(true);
 
-    const result = await login(email, password, {
-      rememberMe,
-      twoFactorCode: requiresTwoFactor ? twoFactorCode : undefined,
-    });
-
-    setLoading(false);
-
-    if (result.success) {
-      onSuccess();
-      return;
-    }
-
-    if (result.requiresTwoFactor) {
-      setRequiresTwoFactor(true);
-      return;
-    }
-
-    switch (result.error) {
-      case 'ACCOUNT_LOCKED':
-        setLocked({ until: 'quelques minutes' });
-        setError('Compte temporairement verrouillé suite à trop de tentatives. Réessayez plus tard.');
-        break;
-      case 'EMAIL_NOT_VERIFIED':
-        setError('Votre email n\'est pas encore vérifié. Consultez votre boîte de réception.');
-        break;
-      case 'INVALID_CREDENTIALS':
-        setError('Email ou mot de passe incorrect.');
-        break;
-      case 'INVALID_2FA_CODE':
-        setError('Code 2FA invalide. Vérifiez votre application d\'authentification.');
-        break;
-      case 'TOO_MANY_REQUESTS':
-        setError('Trop de tentatives. Attendez 15 minutes avant de réessayer.');
-        break;
-      default:
-        setError('Une erreur est survenue. Réessayez.');
+    try {
+      const res = await login(email.trim().toLowerCase(), password);
+      if (res.success) {
+        onSuccess();
+      } else {
+        // Friendly error mapping for firebase / custom express API
+        const code = res.error || '';
+        if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential')) {
+          setError('Email ou mot de passe incorrect');
+        } else if (code.includes('too-many-requests')) {
+          setError('Trop de tentatives. Réessayez dans quelques minutes.');
+        } else if (code.includes('user-disabled')) {
+          setError('Ce compte a été désactivé. Contactez le support.');
+        } else if (code.includes('non configuré')) {
+          setError('Votre compte n\'est pas encore configuré. Contactez votre administrateur.');
+        } else if (code.includes('suspendu') || code.includes('suspended')) {
+          setError('Compte suspendu. Contactez le support.');
+        } else {
+          setError(res.error ?? 'Erreur de connexion');
+        }
+      }
+    } catch (err: any) {
+      console.error('[LOGIN]', err);
+      setError('Erreur de réseau. Vérifiez votre connexion.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="auth-card">
-      <div className="auth-header">
-        <div className="auth-logo">⚡ BizOS</div>
-        <h1 className="auth-title">
-          {requiresTwoFactor ? 'Vérification 2FA' : 'Connexion'}
-        </h1>
-        <p className="auth-subtitle">
-          {requiresTwoFactor
-            ? 'Entrez le code de votre application d\'authentification'
-            : 'Accédez à votre espace de travail sécurisé'}
-        </p>
-      </div>
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-slate-900/80 backdrop-blur-xl border border-violet-500/20 rounded-3xl shadow-2xl p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 mb-4 shadow-lg shadow-violet-500/30">
+            <Shield className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+            BizOS GMAO
+          </h1>
+          <p className="text-gray-400 text-sm mt-1">Connectez-vous à votre espace de travail</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="auth-form" noValidate>
+        {/* Reason banner */}
+        {redirectReason === 'subscription_required' && (
+          <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-sm flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <span>Vous devez disposer d'un abonnement actif pour accéder à cette fonctionnalité.</span>
+          </div>
+        )}
 
-        {!requiresTwoFactor ? (
-          <>
-            <div className="form-group">
-              <label className="form-label" htmlFor="login-email">Email</label>
+        {/* Error */}
+        {error && (
+          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm flex items-start gap-2 animate-fade-in">
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Email professionnel</label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
-                id="login-email"
                 type="email"
-                className="form-input"
-                placeholder="vous@entreprise.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                 autoComplete="email"
-                required
-                disabled={loading}
+                disabled={submitting}
+                placeholder="vous@entreprise.com"
+                className="w-full pl-11 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none disabled:opacity-50 transition-all text-white placeholder-gray-500"
               />
             </div>
+          </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="login-password">Mot de passe</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Mot de passe</label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
-                id="login-password"
-                type="password"
-                className="form-input"
-                placeholder="Votre mot de passe"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete="current-password"
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={loading}
+                autoComplete="current-password"
+                disabled={submitting}
+                placeholder="••••••••"
+                className="w-full pl-11 pr-11 py-3 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none disabled:opacity-50 transition-all text-white placeholder-gray-500"
               />
-            </div>
-
-            <div className="form-group form-checkbox-row">
-              <label className="form-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={e => setRememberMe(e.target.checked)}
-                  disabled={loading}
-                />
-                <span>Se souvenir de moi (30 jours)</span>
-              </label>
-              <button type="button" className="form-link" onClick={() => {}}>
-                Mot de passe oublié ?
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-          </>
-        ) : (
-          <div className="form-group">
-            <label className="form-label" htmlFor="totp-code">Code 2FA (6 chiffres)</label>
-            <input
-              id="totp-code"
-              type="text"
-              className="form-input form-input-otp"
-              placeholder="000000"
-              value={twoFactorCode}
-              onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
-              autoFocus
-              required
-              disabled={loading}
-            />
-            <p className="form-hint">
-              Code de votre application (Google Authenticator, Authy…) ou code de secours au format XXXXX-XXXXX.
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <label className="flex items-center gap-2 text-gray-400 cursor-pointer hover:text-gray-300 transition-colors">
+              <input type="checkbox" className="rounded bg-slate-800 border-slate-700 text-violet-500 focus:ring-violet-500 focus:ring-offset-slate-900" />
+              <span>Se souvenir</span>
+            </label>
+            <button type="button" className="text-violet-400 hover:text-violet-300 transition-colors">
+              Mot de passe oublié ?
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting || !email || !password}
+            className="w-full py-3.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-violet-500/25 text-white mt-2"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Connexion...
+              </>
+            ) : (
+              'Se connecter'
+            )}
+          </button>
+        </form>
+
+        {/* Footer */}
+        {onGoRegister && (
+          <div className="mt-8 pt-6 border-t border-slate-800/50 text-center">
+            <p className="text-sm text-gray-400">
+              Pas encore de compte ?{' '}
+              <button onClick={onGoRegister} className="text-violet-400 hover:text-violet-300 font-semibold transition-colors">
+                Démarrer un essai gratuit
+              </button>
             </p>
           </div>
         )}
+      </div>
 
-        {error && (
-          <div className="form-error" role="alert">
-            <span className="form-error-icon">⚠</span> {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          className="btn-primary"
-          disabled={loading || (requiresTwoFactor && twoFactorCode.length < 6)}
-        >
-          {loading
-            ? 'Vérification…'
-            : requiresTwoFactor
-            ? 'Confirmer'
-            : 'Se connecter'}
-        </button>
-
-        {requiresTwoFactor && (
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => { setRequiresTwoFactor(false); setTwoFactorCode(''); setError(''); }}
-          >
-            ← Retour
-          </button>
-        )}
-      </form>
-
-      {!requiresTwoFactor && (
-        <p className="auth-footer">
-          Pas encore de compte ?{' '}
-          <button className="form-link" onClick={onGoRegister}>Créer un compte</button>
-        </p>
-      )}
+      {/* Security badges */}
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-gray-500">
+        <span className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full border border-white/5">
+          <Shield className="w-3.5 h-3.5 text-green-400" /> Chiffré TLS
+        </span>
+        <span className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full border border-white/5">
+          <Lock className="w-3.5 h-3.5 text-blue-400" /> RGPD Compliant
+        </span>
+      </div>
     </div>
   );
-};
+}
