@@ -25,6 +25,7 @@
     "chart.js": "^4.5.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "date-fns": "^4.4.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.6.2",
@@ -35,6 +36,8 @@
     "hpp": "^0.2.3",
     "jose": "^6.2.8",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
@@ -47,6 +50,7 @@
     "stripe": "^22.4.0",
     "uuid": "^14.0.1",
     "vite": "^6.2.3",
+    "xlsx": "^0.18.5",
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {

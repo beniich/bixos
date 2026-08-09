@@ -7,6 +7,8 @@ import { MembersListView } from './components/spaceflow/MembersListView';
 import { BookingsCalendarView } from './components/spaceflow/BookingsCalendarView';
 import { BillingInvoicesView } from './components/spaceflow/BillingInvoicesView';
 import { CheckoutSuccess } from './components/billing/CheckoutSuccess';
+import { TechMobileHome } from './components/mobile/TechMobileHome';
+import { TechClaimDetail } from './components/mobile/TechClaimDetail';
 import { AnalyticsAiView } from './components/spaceflow/AnalyticsAiView';
 import { CoworkerMobilePwaView } from './components/spaceflow/CoworkerMobilePwaView';
 import { VisitorsView } from './components/spaceflow/VisitorsView';
@@ -46,6 +48,7 @@ import { RouteGuard, GuardMode } from './components/auth/RouteGuard';
 function AppContent() {
   const { user, profile, logout } = useAuth();
   const [activePage, setActivePage] = useState<PageId>('home');
+  const [techClaimId, setTechClaimId] = useState<string>('');
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [language, setLanguage] = useState<Language>(() => {
     const savedLang = localStorage.getItem('bizos_lang');
@@ -80,7 +83,8 @@ function AppContent() {
     return 'subscription-required';
   };
 
-  const handleNavigate = (page: PageId) => {
+  const handleNavigate = (page: PageId, params?: Record<string, any>) => {
+    if (params?.claimId) setTechClaimId(params.claimId);
     setActivePage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -234,6 +238,14 @@ function AppContent() {
           {/* ── WP PLUGIN ── */}
           {activePage === 'wp_plugin' && (
             <WpPluginExtensionView />
+          )}
+
+          {/* ── TECH MOBILE ── */}
+          {activePage === 'tech_mobile_home' && (
+            <TechMobileHome onNavigate={handleNavigate} />
+          )}
+          {activePage === 'tech_claim_detail' && (
+            <TechClaimDetail claimId={techClaimId} onNavigate={handleNavigate} />
           )}
 
           {/* ── PAGES PUBLIQUES ── */}

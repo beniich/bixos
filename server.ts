@@ -6,6 +6,7 @@ import cors from 'cors';
 import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
 import stripeRoutes from './src/api/stripe/routes';
+import notificationsRoutes from './src/api/notifications/routes';
 
 export const app = express();
 
@@ -13,6 +14,11 @@ export const app = express();
 // BILLING / STRIPE (Must be before global JSON parser for webhook raw body)
 // ==========================================
 app.use('/api/billing', stripeRoutes);
+
+// ==========================================
+// NOTIFICATIONS
+// ==========================================
+app.use('/api/notifications', notificationsRoutes);
 
 // ==========================================
 // SECURITY MIDDLEWARES

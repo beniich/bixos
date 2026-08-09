@@ -33,7 +33,9 @@ export type PageId =
   | 'call_copilot'
   | 'exit_ready'
   | 'schema'
-  | 'wp_plugin';
+  | 'wp_plugin'
+  | 'tech_mobile_home'
+  | 'tech_claim_detail';
 
 // ==========================================
 // BIZOS GMAO & CAFM TYPES
