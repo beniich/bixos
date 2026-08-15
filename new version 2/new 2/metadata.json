@@ -1,0 +1,6 @@
+{
+  "name": "BizOS GMAO",
+  "description": "AI-powered CAFM/CMMS platform for predictive maintenance, IoT telemetry, asset tracking, work order management, and technician mobility.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

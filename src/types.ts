@@ -34,8 +34,13 @@ export type PageId =
   | 'exit_ready'
   | 'schema'
   | 'wp_plugin'
+  | 'ecoasset_plugin'
+  | 'arena_esport'
+  | 'venue_management'
+  | 'stadium_management'
   | 'tech_mobile_home'
-  | 'tech_claim_detail';
+  | 'tech_claim_detail'
+  | 'ticket_scanner';
 
 // ==========================================
 // BIZOS GMAO & CAFM TYPES

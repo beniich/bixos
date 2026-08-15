@@ -14,7 +14,7 @@ export function useNotifications(options?: { limit?: number; unreadOnly?: boolea
   const [loading, setLoading] = useState(true);
 
   const orgId = profile?.organizationId;
-  const uid = user?.uid;
+  const uid = user?.id;
 
   useEffect(() => {
     if (!uid || !orgId) return;

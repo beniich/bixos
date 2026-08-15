@@ -29,7 +29,7 @@ export function TechMobileHome({ onNavigate }: Props) {
   }, []);
 
   const orgId = profile?.organizationId;
-  const uid = user?.uid;
+  const uid = user?.id;
 
   useEffect(() => {
     if (!uid || !orgId) return;

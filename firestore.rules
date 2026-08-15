@@ -1,48 +1,180 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // ============================================
+    // FONCTIONS UTILITAIRES
+    // ============================================
+    function isSignedIn() {
+      return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() &&
+             request.auth.token.role == role;
+    }
+
+    function hasAnyRole(roles) {
+      return isSignedIn() &&
+             request.auth.token.role in roles;
+    }
+
+    function isAdmin() {
+      return hasRole('SUPER_ADMIN');
+    }
+
+    function isOrganizer() {
+      return hasAnyRole(['ORGANIZER', 'EVENT_MANAGER', 'SUPER_ADMIN']);
+    }
+
+    function isEventOrganizer(eventId) {
+      let event = get(/databases/$(database)/documents/ecoasset_events/$(eventId));
+      return isSignedIn() && event.data.organizerId == request.auth.uid;
+    }
+
+    // ============================================
+    // UTILISATEURS
+    // ============================================
     match /users/{userId} {
-      allow read, write: if true;
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    match /test/{testId} {
-      allow read, write: if true;
+    // ============================================
+    // ÉVÉNEMENTS
+    // ============================================
+    match /ecoasset_events/{eventId} {
+      // Lecture publique uniquement des événements publiés
+      allow read: if resource.data.status == 'PUBLISHED'
+                  || isEventOrganizer(eventId)
+                  || isAdmin();
+
+      // Seuls les organisateurs peuvent créer
+      allow create: if isOrganizer()
+                    && request.resource.data.organizerId == request.auth.uid
+                    && validateEventData(request.resource.data);
+
+      // Seul l'organisateur peut modifier
+      allow update: if isEventOrganizer(eventId) || isAdmin();
+
+      allow delete: if isEventOrganizer(eventId) || isAdmin();
     }
 
-    match /organizations/{organizationId} {
-      allow read, write: if true;
+    // ============================================
+    // BILLETS (Tickets)
+    // ============================================
+    match /ecoasset_tickets/{ticketId} {
+      allow read: if true;  // Public (pour affichage prix)
+      allow create, update, delete: if isOrganizer();
+
+      function validateEventData(data) {
+        return data.title is string
+            && data.title.size() > 0
+            && data.title.size() <= 100
+            && data.startDate is string
+            && data.capacity is number
+            && data.capacity > 0
+            && data.price >= 0;
+      }
     }
 
-    match /work_orders/{workOrderId} {
-      allow read, write: if true;
+    // ============================================
+    // RÉSERVATIONS
+    // ============================================
+    match /ecoasset_bookings/{bookingId} {
+      // L'utilisateur peut voir ses propres réservations
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid)
+                  || isOrganizer()
+                  || isAdmin();
+
+      // Création publique (guest checkout autorisé)
+      allow create: if validateBookingData(request.resource.data)
+                    && request.resource.data.status == 'PENDING';
+
+      // Seul l'organisateur peut modifier le statut
+      allow update: if isOrganizer() || isAdmin();
+      allow delete: if isAdmin();
+
+      function validateBookingData(data) {
+        return data.eventId is string
+            && data.customerEmail is string
+            && data.items is list
+            && data.total is number
+            && data.total > 0;
+      }
     }
 
-    match /equipment/{equipmentId} {
-      allow read, write: if true;
+    // ============================================
+    // BILLETS ÉMIS (avec QR code)
+    // ============================================
+    match /ecoasset_tickets_issued/{ticketId} {
+      allow read: if isSignedIn() &&
+                    (resource.data.userId == request.auth.uid ||
+                     hasRole('SCANNER') ||
+                     isOrganizer() ||
+                     isAdmin());
+      allow create: if false;  // Uniquement Cloud Functions
+      allow update: if hasRole('SCANNER') || isOrganizer() || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    match /energy_settings/{settingId} {
-      allow read, write: if true;
+    // ============================================
+    // SIÈGES
+    // ============================================
+    match /ecoasset_seats/{seatId} {
+      allow read: if true;  // Public (pour plan de salle)
+      allow write: if false;  // Uniquement Cloud Functions
     }
 
-    match /sites/{siteId} {
-      allow read, write: if true;
+    // ============================================
+    // LIEUX
+    // ============================================
+    match /ecoasset_venues/{venueId} {
+      allow read: if true;
+      allow write: if isOrganizer() || isAdmin();
     }
 
-    match /collaborator_entries/{entryId} {
-      allow read, write: if true;
+    // ============================================
+    // ARTISTES
+    // ============================================
+    match /ecoasset_speakers/{speakerId} {
+      allow read: if true;
+      allow write: if isOrganizer() || isAdmin();
     }
 
-    match /members/{memberId} {
-      allow read, write: if true;
+    // ============================================
+    // AVIS
+    // ============================================
+    match /ecoasset_reviews/{reviewId} {
+      allow read: if resource.data.status == 'PUBLISHED' || isOrganizer();
+      allow create: if isSignedIn() && hasAttendedEvent(request.resource.data.eventId);
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
-    match /visitors/{visitorId} {
-      allow read, write: if true;
+    function hasAttendedEvent(eventId) {
+      return exists(/databases/$(database)/documents/ecoasset_bookings/$(request.auth.uid + '_' + eventId));
+    }
+
+    // ============================================
+    // CODES PROMO
+    // ============================================
+    match /ecoasset_promo_codes/{code} {
+      allow read: if true;  // Pour validation
+      allow write: if isOrganizer() || isAdmin();
+    }
+
+    // ============================================
+    // ANALYTICS (privé)
+    // ============================================
+    match /analytics/{document=**} {
+      allow read: if isOrganizer() || isAdmin();
+      allow write: if false;  // Uniquement serveur
     }
   }
 }

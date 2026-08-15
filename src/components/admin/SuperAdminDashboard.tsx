@@ -99,7 +99,7 @@ export function SuperAdminDashboard({ setCurrentPage }: SuperAdminDashboardProps
   const [usersByRole, setUsersByRole] = useState<Record<string, number>>({});
   const [assetsByStatus, setAssetsByStatus] = useState<Record<string, number>>({});
 
-  const orgId = profile?.organizationId || user?.uid;
+  const orgId = profile?.organizationId || user?.id;
 
   useEffect(() => {
     if (!orgId) return;

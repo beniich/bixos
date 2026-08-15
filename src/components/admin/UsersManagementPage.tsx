@@ -22,7 +22,7 @@ export function UsersManagementPage() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const orgId = profile?.organizationId || user?.uid;
+  const orgId = profile?.organizationId || user?.id;
 
   useEffect(() => {
     if (!orgId) return;
@@ -57,7 +57,7 @@ export function UsersManagementPage() {
       id: userId,
       organizationId: orgId,
       status: 'PENDING_INVITATION',
-      invitedById: user?.uid,
+      invitedById: user?.id,
       invitedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

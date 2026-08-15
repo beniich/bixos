@@ -23,29 +23,22 @@ export function LoginForm({ onSuccess, onGoRegister, redirectReason }: LoginForm
     setSubmitting(true);
 
     try {
-      const res = await login(email.trim().toLowerCase(), password);
-      if (res.success) {
-        onSuccess();
-      } else {
-        // Friendly error mapping for firebase / custom express API
-        const code = res.error || '';
-        if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential')) {
-          setError('Email ou mot de passe incorrect');
-        } else if (code.includes('too-many-requests')) {
-          setError('Trop de tentatives. Réessayez dans quelques minutes.');
-        } else if (code.includes('user-disabled')) {
-          setError('Ce compte a été désactivé. Contactez le support.');
-        } else if (code.includes('non configuré')) {
-          setError('Votre compte n\'est pas encore configuré. Contactez votre administrateur.');
-        } else if (code.includes('suspendu') || code.includes('suspended')) {
-          setError('Compte suspendu. Contactez le support.');
-        } else {
-          setError(res.error ?? 'Erreur de connexion');
-        }
-      }
+      await login(email.trim().toLowerCase(), password);
+      onSuccess();
     } catch (err: any) {
       console.error('[LOGIN]', err);
-      setError('Erreur de réseau. Vérifiez votre connexion.');
+      const msg: string = err?.message ?? '';
+      if (msg.includes('Invalid credentials') || msg.includes('401')) {
+        setError('Email ou mot de passe incorrect');
+      } else if (msg.includes('SUSPENDED')) {
+        setError('Compte suspendu. Contactez le support.');
+      } else if (msg.includes('INACTIVE')) {
+        setError('Votre compte n\'est pas encore activé. Contactez votre administrateur.');
+      } else if (msg.includes('429') || msg.includes('too-many')) {
+        setError('Trop de tentatives. Réessayez dans quelques minutes.');
+      } else {
+        setError('Erreur de connexion. Vérifiez votre réseau.');
+      }
     } finally {
       setSubmitting(false);
     }

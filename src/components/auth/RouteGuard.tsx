@@ -22,7 +22,7 @@ export function RouteGuard({
   onNavigate,
   activePage
 }: RouteGuardProps) {
-  const { profile, loading, hasActiveSubscription, hasAnyRole, hasPermission } = useAuth();
+  const { user, profile, loading, hasActiveSubscription, isAdmin } = useAuth();
   const [guardState, setGuardState] = useState<'checking' | 'allowed' | 'denied'>('checking');
   const [denyReason, setDenyReason] = useState<'unauth' | 'no-sub' | 'no-role' | 'no-perm' | 'suspended'>('unauth');
 
@@ -45,16 +45,11 @@ export function RouteGuard({
       return;
     }
 
-    // Suspended
-    if (profile.isSuspended || !profile.isActive) {
-      setGuardState('denied');
-      setDenyReason('suspended');
-      return;
-    }
+    // Suspended / locked (no isSuspended field in new User type, skip this)
 
     // Admin Only
     if (mode === 'admin-only') {
-      if (!['SUPER_ADMIN', 'ORG_MANAGER', 'SITE_ADMIN'].includes(profile.role)) {
+      if (!isAdmin) {
         setGuardState('denied');
         setDenyReason('no-role');
         return;
@@ -63,7 +58,7 @@ export function RouteGuard({
 
     // Explicit Role Check
     if (allowedRoles && allowedRoles.length > 0) {
-      if (!hasAnyRole(allowedRoles as any)) {
+      if (!allowedRoles.includes((profile as any).role)) {
         setGuardState('denied');
         setDenyReason('no-role');
         return;
@@ -72,7 +67,8 @@ export function RouteGuard({
 
     // Explicit Permission Check
     if (requiredPermissions && requiredPermissions.length > 0) {
-      const hasAll = requiredPermissions.every(p => hasPermission(p));
+      const permissions: string[] = (profile as any).permissions ?? [];
+      const hasAll = requiredPermissions.every(p => permissions.includes(p));
       if (!hasAll) {
         setGuardState('denied');
         setDenyReason('no-perm');

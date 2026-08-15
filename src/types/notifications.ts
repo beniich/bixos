@@ -24,9 +24,14 @@ export type NotificationType =
   | 'subscription_expiring'
   | 'subscription_expired'
   | 'subscription_activated'
-  // IoT
   | 'iot_alert'
-  | 'iot_anomaly_detected';
+  | 'iot_anomaly_detected'
+  // Ticketing / EcoAsset
+  | 'ticket_purchased'
+  | 'ticket_transferred'
+  | 'ticket_scanned'
+  | 'event_cancelled'
+  | 'event_reminder';
 
 export type NotificationChannel = 'in_app' | 'email' | 'push' | 'sms' | 'webhook';
 

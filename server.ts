@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -7,6 +8,7 @@ import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
 import stripeRoutes from './src/api/stripe/routes';
 import notificationsRoutes from './src/api/notifications/routes';
+import authRoutes from './src/api/auth/routes';
 
 export const app = express();
 
@@ -19,6 +21,11 @@ app.use('/api/billing', stripeRoutes);
 // NOTIFICATIONS
 // ==========================================
 app.use('/api/notifications', notificationsRoutes);
+
+// ==========================================
+// AUTHENTICATION
+// ==========================================
+app.use('/api/auth', authRoutes);
 
 // ==========================================
 // SECURITY MIDDLEWARES
@@ -66,7 +73,7 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token'],
     maxAge: 86400, // Preflight cache 24h
   })
 );
@@ -1388,13 +1395,30 @@ Question/Prompt de l'utilisateur: ${prompt}`,
     if (process.env.NODE_ENV !== 'production') {
       const vite = await createViteServer({
         server: { middlewareMode: true },
-        appType: 'spa',
+        appType: 'custom',
       });
       app.use(vite.middlewares);
+
+      // Serve index.html transformed by Vite (injects React Refresh preamble)
+      app.use('*', async (req: any, res: any, next: any) => {
+        const url = req.originalUrl;
+        try {
+          const fs = await import('fs');
+          let template = fs.readFileSync(
+            new URL('./index.html', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'),
+            'utf-8'
+          );
+          template = await vite.transformIndexHtml(url, template);
+          res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+        } catch (e: any) {
+          vite.ssrFixStacktrace(e);
+          next(e);
+        }
+      });
     } else {
       const distPath = path.join(process.cwd(), 'dist');
       app.use(express.static(distPath));
-      app.get('*', (req, res) => {
+      app.get('*', (req: any, res: any) => {
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }

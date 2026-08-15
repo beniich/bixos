@@ -22,6 +22,11 @@ import { SchemaView } from './components/spaceflow/SchemaView';
 import { GoogleAuthGateModal } from './components/spaceflow/GoogleAuthGateModal';
 import { CafmGmaoDashboard } from './components/spaceflow/CafmGmaoDashboard';
 import { WpPluginExtensionView } from './components/spaceflow/WpPluginExtensionView';
+import { EcoAssetPluginView } from './components/spaceflow/EcoAssetPluginView';
+import { EsportArenaView } from './components/spaceflow/EsportArenaView';
+import { VenueManagementView } from './components/spaceflow/VenueManagementView';
+import { StadiumManagementView } from './components/spaceflow/StadiumManagementView';
+import { ScannerApp } from './components/tickets/ScannerApp';
 
 import { SuperAdminDashboard } from './components/admin/SuperAdminDashboard';
 import { UsersManagementPage } from './components/admin/UsersManagementPage';
@@ -44,6 +49,7 @@ import { Footer } from './components/Footer';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { RouteGuard, GuardMode } from './components/auth/RouteGuard';
+import { ToastProvider } from './hooks/useToast';
 
 function AppContent() {
   const { user, profile, logout } = useAuth();
@@ -66,8 +72,8 @@ function AppContent() {
   // Fallback map to keep Header happy
   const googleUser = user ? {
     email: user.email || 'demo@bizos.com',
-    name: user.displayName || 'Utilisateur',
-    avatar: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+    name: (user as any).displayName || user.email || 'Utilisateur',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
     provider: 'GOOGLE_OAUTH',
     scopesAuthorized: [],
     googleToken: '',
@@ -76,8 +82,9 @@ function AppContent() {
   const isLoggedIn = !!user;
 
   const getGuardMode = (page: PageId): GuardMode => {
-    const publicPages = ['home', 'pricing', 'architecture', 'support', 'login', 'vision', 'demo', 'contact', 'blog', 'changelog', 'testimonials'];
+    const publicPages = ['home', 'pricing', 'architecture', 'support', 'login', 'vision', 'demo', 'contact', 'blog', 'changelog', 'testimonials', 'security'];
     const adminPages = ['admin_super', 'admin_users', 'admin_environments', 'admin_cafm'];
+    // ecoasset_plugin, arena_esport, venue_management, stadium_management → subscription-required (default)
     if (publicPages.includes(page)) return 'public';
     if (adminPages.includes(page)) return 'admin-only';
     return 'subscription-required';
@@ -240,6 +247,23 @@ function AppContent() {
             <WpPluginExtensionView />
           )}
 
+          {/* ── ECOASSET / ARENA / VENUE / STADIUM ── */}
+          {activePage === 'ecoasset_plugin' && (
+            <EcoAssetPluginView />
+          )}
+          {activePage === 'arena_esport' && (
+            <EsportArenaView />
+          )}
+          {activePage === 'venue_management' && (
+            <VenueManagementView />
+          )}
+          {activePage === 'stadium_management' && (
+            <StadiumManagementView />
+          )}
+          {activePage === 'ticket_scanner' && (
+            <ScannerApp />
+          )}
+
           {/* ── TECH MOBILE ── */}
           {activePage === 'tech_mobile_home' && (
             <TechMobileHome onNavigate={handleNavigate} />
@@ -287,10 +311,11 @@ function AppContent() {
 export function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </AuthProvider>
   );
 }
 
 export default App;
-
