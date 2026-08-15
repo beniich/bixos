@@ -17,7 +17,83 @@ const LoginSchema = z.object({
   deviceId: z.string().min(1),
 });
 
-// ============== POST /api/auth/login ==============
+const RegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(2),
+  deviceId: z.string().min(1),
+});
+
+// ============== POST /api/auth/register ==============
+
+router.post('/register', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { email, password, name, deviceId } = RegisterSchema.parse(req.body);
+
+    // Check if email already exists
+    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (existing) {
+      return res.status(409).json({ error: 'Email already in use', code: 'EMAIL_TAKEN' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        name,
+        passwordHash,
+        role: 'FACILITY_MANAGER',
+        isSuperAdmin: false,
+        emailVerified: false,
+      },
+    });
+
+    const ipAddress = req.ip ?? req.headers['x-forwarded-for']?.toString() ?? 'unknown';
+    const userAgent = req.headers['user-agent'] ?? 'unknown';
+
+    const { sessionCookie, refreshCookie } = await sessionService.createSession(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organizationId,
+        displayName: user.name,
+        isSuperAdmin: user.isSuperAdmin,
+        permissions: [],
+        subscriptionStatus: 'trial',
+        subscriptionPlan: 'free',
+      },
+      { deviceId, ipAddress, userAgent }
+    );
+
+    res.cookie(COOKIE_NAMES.SESSION, sessionCookie, SESSION_COOKIE_OPTIONS);
+    res.cookie(COOKIE_NAMES.REFRESH, refreshCookie, REFRESH_COOKIE_OPTIONS);
+
+    const csrfToken = await generateCsrfToken(res);
+
+    res.status(201).json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
+        organizationId: user.organizationId,
+      },
+      csrfToken,
+    });
+
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid input', details: err.issues });
+    }
+    console.error('[REGISTER]', err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
 
 router.post('/login', async (req: Request, res: Response): Promise<any> => {
   try {

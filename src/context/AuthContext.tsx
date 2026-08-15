@@ -115,7 +115,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     signIn: login, // alias
     signInWithGoogle: async () => { console.warn('Google Auth via API non implémenté') },
-    signUp: async (email, password, name) => { console.warn('Sign Up via API non implémenté') },
+    signUp: async (email, password, name) => {
+      await apiClient.post<{ user: User }>('/api/auth/register', {
+        email,
+        password,
+        name,
+        deviceId: getDeviceId(),
+      });
+      await loadCurrentUser();
+    },
     resetPassword: async (email) => { console.warn('Reset password via API non implémenté') },
     
     hasPermission: (resource, action) => {

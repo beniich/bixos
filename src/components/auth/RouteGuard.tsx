@@ -86,11 +86,10 @@ export function RouteGuard({
     setGuardState('allowed');
   }, [loading, profile, mode, activePage]);
 
-  // Si refusé pour cause d'auth, on peut forcer la vue login
+  // Si refusé pour cause d'auth, naviguer vers login automatiquement
   useEffect(() => {
-    if (guardState === 'denied' && denyReason === 'unauth' && activePage !== 'home') {
-      // In a pure state-based SPA, we might want to just show the login view 
-      // instead of redirecting the whole page state. But we rely on GuardDenyScreen below.
+    if (guardState === 'denied' && denyReason === 'unauth' && activePage !== 'home' && activePage !== 'login') {
+      onNavigate('login');
     }
   }, [guardState, denyReason, activePage]);
 

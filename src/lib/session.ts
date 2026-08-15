@@ -20,6 +20,8 @@ export interface SessionData {
   issuedAt: number;
   expiresAt: number;
   lastActivityAt: number;
+  subscriptionStatus: string;
+  subscriptionPlan: string;
 }
 
 interface RefreshData {
@@ -40,6 +42,8 @@ class SessionService {
       displayName: string;
       isSuperAdmin: boolean;
       permissions: string[];
+      subscriptionStatus?: string;
+      subscriptionPlan?: string;
     },
     meta: { deviceId: string; ipAddress?: string; userAgent?: string }
   ): Promise<{ sessionCookie: string; refreshCookie: string }> {
@@ -58,7 +62,10 @@ class SessionService {
       issuedAt: now,
       expiresAt,
       lastActivityAt: now,
+      subscriptionStatus: user.subscriptionStatus ?? 'inactive',
+      subscriptionPlan: user.subscriptionPlan ?? 'free',
     };
+
 
     const sessionCookie = await sealData(sessionData, {
       password: SESSION_PASSWORD,

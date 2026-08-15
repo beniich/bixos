@@ -58,7 +58,8 @@
     "uuid": "^14.0.1",
     "vite": "^6.2.3",
     "xlsx": "^0.18.5",
-    "xss-clean": "^0.1.4"
+    "xss-clean": "^0.1.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

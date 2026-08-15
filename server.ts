@@ -1404,10 +1404,9 @@ Question/Prompt de l'utilisateur: ${prompt}`,
         const url = req.originalUrl;
         try {
           const fs = await import('fs');
-          let template = fs.readFileSync(
-            new URL('./index.html', import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'),
-            'utf-8'
-          );
+          const { fileURLToPath } = await import('url');
+          const indexPath = fileURLToPath(new URL('./index.html', import.meta.url));
+          let template = fs.readFileSync(indexPath, 'utf-8');
           template = await vite.transformIndexHtml(url, template);
           res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
         } catch (e: any) {
