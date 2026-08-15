@@ -9,7 +9,7 @@ export interface TicketSeatItem {
   row?: string;
   seatNum?: number;
   price: number;
-  type?: 'regular' | 'vip';
+  type?: 'regular' | 'vip' | 'premium';
 }
 
 export interface EcoAssetBooking {
@@ -189,7 +189,7 @@ export interface FirestoreSeat {
   section: string;
   row?: string;
   seatNum?: number;
-  type?: 'regular' | 'vip';
+  type?: 'regular' | 'vip' | 'premium';
   price: number;
   status: 'available' | 'occupied' | 'selected';
   bookedBy?: string;

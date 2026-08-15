@@ -17,7 +17,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Seat, SeatHold, SeatStatus, VenueLayout } from '../types/seat';
+import type { Seat, SeatHold, SeatStatus, VenueLayout, SeatSection, SeatCategory } from '../types/seat';
 
 const HOLD_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -47,8 +47,8 @@ export const getVenueLayout = async (venueId: string): Promise<VenueLayout | nul
     height: venue.layoutHeight || 900,
     stage: venue.stage || { x: 500, y: 40, width: 200, height: 60, label: 'SCÈNE' },
     seats: seatsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Seat)),
-    sections: sectionsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    categories: categoriesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    sections: sectionsSnap.docs.map(d => ({ id: d.id, ...d.data() } as SeatSection)),
+    categories: categoriesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SeatCategory)),
   };
 };
 

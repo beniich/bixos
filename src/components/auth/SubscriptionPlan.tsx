@@ -15,12 +15,12 @@ export const SubscriptionPlan: React.FC<{ onNavigate: (page: string) => void }> 
     setLoadingPlan(planId);
     try {
       // In a real integration, this would call our backend to create a Stripe Checkout session
-      const response = await fetch('/api/subscription/create-session', {
+      const response = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await user.getIdToken()}`
         },
+        credentials: 'include', // sends session cookie
         body: JSON.stringify({ planId })
       });
       

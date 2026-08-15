@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { generateSecureTicketData } from '../../services/qrCodeService';
+import { generateQRPayload } from '../../services/qrCodeService';
 import { QRCodeSVG } from 'qrcode.react'; // Using standard qrcode lib usually available
 import { Loader2, ShieldCheck, Ticket } from 'lucide-react';
 
@@ -26,10 +26,10 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
 
     const generateQR = async () => {
       try {
-        const payload = await generateSecureTicketData(ticketId, eventId, userId);
+        const payloadStr = await generateQRPayload(ticketId, 'BOOKING', eventId, 'Standard');
         if (mounted) {
           // We stringify the signed payload for the QR content
-          setQrData(JSON.stringify(payload));
+          setQrData(payloadStr);
         }
       } catch (err: any) {
         if (mounted) {

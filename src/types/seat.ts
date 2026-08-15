@@ -90,6 +90,7 @@ export interface BookingItem {
   ticketId: string;
   ticketName: string;
   tier: string;
+  tierName: string; // alias used by qrCodeService
   unitPrice: number;
   quantity: number;
   subtotal: number;

@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { apiClient } from '../lib/api-client';
 import { getDeviceId } from '../lib/device-id';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   displayName: string;

@@ -16,7 +16,7 @@ interface Props {
 }
 
 export const RegisterForm: React.FC<Props> = ({ onSuccess, onGoLogin }) => {
-  const { register } = useAuth();
+  const { signUp } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -51,27 +51,22 @@ export const RegisterForm: React.FC<Props> = ({ onSuccess, onGoLogin }) => {
     }
 
     setLoading(true);
-    const result = await register(email, password, name);
-    setLoading(false);
-
-    if (result.success) {
+    try {
+      await signUp(email, password, name);
       setRegistered(true);
-      return;
-    }
-
-    switch (result.error) {
-      case 'EMAIL_TAKEN':
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+      if (msg.includes('EMAIL_TAKEN') || msg.includes('409')) {
         setError('Un compte avec cet email existe déjà.');
-        break;
-      case 'WEAK_PASSWORD':
-        setFieldErrors(result.details || []);
-        setError('Mot de passe insuffisant.');
-        break;
-      case 'TOO_MANY_REQUESTS':
+      } else if (msg.includes('400')) {
+        setError('Mot de passe insuffisant ou données invalides.');
+      } else if (msg.includes('429')) {
         setError('Trop de créations de compte depuis cette adresse IP. Réessayez dans 1h.');
-        break;
-      default:
+      } else {
         setError('Une erreur est survenue. Réessayez.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

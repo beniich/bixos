@@ -74,14 +74,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         <PaymentElement 
           options={{
             layout: 'tabs',
-            theme: 'night', // Stripe styling match
-            variables: {
-              colorPrimary: '#d946ef',
-              colorBackground: 'transparent',
-              colorText: '#ffffff',
-              colorDanger: '#ef4444',
-              fontFamily: 'Inter, system-ui, sans-serif'
-            }
           }}
         />
       </div>
