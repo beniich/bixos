@@ -1,3 +1,4 @@
+// @ts-ignore — Prisma v7: PrismaClient may not be typed in @prisma/client until `prisma generate` runs on Vercel
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
@@ -15,8 +16,5 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool as any);
 
 export const prisma = global.prisma || new PrismaClient({ adapter } as any);
-
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
-
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
