@@ -19,7 +19,7 @@ const LoginSchema = z.object({
 
 const RegisterSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(12, 'Le mot de passe doit contenir au moins 12 caractères'),
   name: z.string().min(2),
   deviceId: z.string().min(1),
 });
@@ -57,7 +57,7 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
         id: user.id,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId ?? 'unassigned',
         displayName: user.name,
         isSuperAdmin: user.isSuperAdmin,
         permissions: [],
@@ -130,10 +130,10 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
         id: user.id,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId ?? 'unassigned',
         displayName: user.name,
         isSuperAdmin: user.isSuperAdmin,
-        permissions: [],  // Extend when Permission model is added
+        permissions: [],
       },
       { deviceId, ipAddress, userAgent }
     );
@@ -284,14 +284,13 @@ router.get('/me', requireAuth, async (req: Request, res: Response): Promise<any>
         name: user.name,
         role: user.role,
         isSuperAdmin: user.isSuperAdmin,
-        organizationId: user.organizationId,
+        organizationId: user.organizationId ?? 'unassigned',
         organizationName: user.organization?.name,
       },
       subscription: {
-        // Organization schema has no subscription fields yet.
-        // Extend when billing is wired to org.
-        status: 'active',
-        plan: 'pro',
+        status: (user.organization as any)?.plan === 'trial' ? 'trial' : 'active',
+        plan: (user.organization as any)?.plan ?? 'free',
+        expiresAt: (user.organization as any)?.planExpiresAt?.toISOString(),
       },
     });
   } catch (err) {

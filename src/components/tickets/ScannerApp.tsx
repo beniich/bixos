@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { verifyTicketData } from '../../services/qrCodeService';
+import { checkInTicket } from '../../services/ticketService';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { CheckCircle, XCircle, Scan, History, Loader2, LogOut } from 'lucide-react';
+import { CheckCircle, XCircle, Scan, History, LogOut, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface ScanResult {
@@ -10,6 +11,8 @@ interface ScanResult {
   userId: string;
   timestamp: number;
   status: 'VALID' | 'INVALID' | 'ALREADY_SCANNED' | 'ERROR';
+  holderName?: string;
+  seat?: string;
   message?: string;
 }
 
@@ -19,6 +22,8 @@ export const ScannerApp: React.FC = () => {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scannerStarted, setScannerStarted] = useState(false);
+  const [processingTicket, setProcessingTicket] = useState(false);
+  const lastScanRef = useRef<ScanResult | null>(null);
 
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
@@ -43,59 +48,96 @@ export const ScannerApp: React.FC = () => {
   }, [isScanning]);
 
   const onScanSuccess = async (decodedText: string) => {
-    // Prevent multiple rapid scans
-    if (lastScan && Date.now() - lastScan.timestamp < 3000) return;
+    // Anti-rebond : on ignore si un scan est en cours ou trop récent (<3s)
+    if (processingTicket) return;
+    const now = Date.now();
+    if (lastScanRef.current && now - lastScanRef.current.timestamp < 3000) return;
+
+    setProcessingTicket(true);
 
     try {
-      // Le QR Code contient le payload JSON signé
       const payload = JSON.parse(decodedText);
-      
+
       // 1. Vérification cryptographique locale
       const isValid = await verifyTicketData(payload);
-      
       if (!isValid) {
         handleResult({
           ticketId: payload.ticketId || 'Inconnu',
-          eventId: payload.eventId || 'Inconnu',
-          userId: payload.userId || 'Inconnu',
-          timestamp: Date.now(),
+          eventId: payload.eventId || '',
+          userId: payload.userId || '',
+          timestamp: now,
           status: 'INVALID',
-          message: 'Signature cryptographique invalide (Billet falsifié)'
+          message: 'Signature cryptographique invalide (billet falsifié)',
         });
         return;
       }
 
-      // 2. TODO: Appel au backend (Firestore/Functions) pour vérifier si déjà scanné
-      // const backendResult = await validateTicketStatus(payload.ticketId, payload.eventId);
-      
-      // Simulation pour l'exemple
-      const isAlreadyScanned = Math.random() > 0.8; // 20% chance pour la démo
-      
-      if (isAlreadyScanned) {
+      // 2. Appel Firestore via checkInTicket
+      const result = await checkInTicket(payload.ticketId);
+
+      if (result.success && result.ticket) {
+        const t = result.ticket;
         handleResult({
-          ...payload,
-          timestamp: Date.now(),
+          ticketId: t.id,
+          eventId: t.eventId,
+          userId: t.holder?.email || '',
+          timestamp: now,
+          status: 'VALID',
+          holderName: t.holder?.fullName,
+          seat: t.seat ? `${t.seat.section} ${t.seat.row}${t.seat.number}` : undefined,
+          message: 'Accès autorisé',
+        });
+      } else if (result.reason === 'ALREADY_USED') {
+        const t = result.ticket;
+        handleResult({
+          ticketId: payload.ticketId,
+          eventId: payload.eventId || '',
+          userId: payload.userId || '',
+          timestamp: now,
           status: 'ALREADY_SCANNED',
-          message: 'Billet déjà scanné à 19:42'
+          holderName: t?.holder?.fullName,
+          message: 'Billet déjà utilisé',
+        });
+      } else if (result.reason === 'CANCELLED') {
+        handleResult({
+          ticketId: payload.ticketId,
+          eventId: payload.eventId || '',
+          userId: payload.userId || '',
+          timestamp: now,
+          status: 'INVALID',
+          message: 'Billet annulé',
+        });
+      } else if (result.reason === 'NOT_FOUND') {
+        handleResult({
+          ticketId: payload.ticketId,
+          eventId: payload.eventId || '',
+          userId: payload.userId || '',
+          timestamp: now,
+          status: 'INVALID',
+          message: 'Billet introuvable en base',
         });
       } else {
+        // ERROR ou Firestore non configuré — on fait confiance à la signature locale
         handleResult({
-          ...payload,
-          timestamp: Date.now(),
+          ticketId: payload.ticketId || 'Inconnu',
+          eventId: payload.eventId || '',
+          userId: payload.userId || '',
+          timestamp: now,
           status: 'VALID',
-          message: 'Accès autorisé'
+          message: 'Accès autorisé (mode hors-ligne)',
         });
       }
-
-    } catch (err) {
+    } catch {
       handleResult({
         ticketId: 'Erreur Lecture',
         eventId: '',
         userId: '',
-        timestamp: Date.now(),
+        timestamp: now,
         status: 'ERROR',
-        message: 'Format du QR code non reconnu'
+        message: 'Format du QR code non reconnu',
       });
+    } finally {
+      setProcessingTicket(false);
     }
   };
 
@@ -104,8 +146,9 @@ export const ScannerApp: React.FC = () => {
   };
 
   const handleResult = (result: ScanResult) => {
+    lastScanRef.current = result;
     setLastScan(result);
-    setScanHistory(prev => [result, ...prev].slice(0, 50)); // Keep last 50
+    setScanHistory(prev => [result, ...prev].slice(0, 50));
   };
 
   return (
@@ -169,27 +212,41 @@ export const ScannerApp: React.FC = () => {
               {lastScan.status === 'VALID' ? (
                 <CheckCircle className="text-green-500 shrink-0" size={24} />
               ) : lastScan.status === 'ALREADY_SCANNED' ? (
-                <History className="text-amber-500 shrink-0" size={24} />
+                <AlertTriangle className="text-amber-500 shrink-0" size={24} />
               ) : (
                 <XCircle className="text-red-500 shrink-0" size={24} />
               )}
               
-              <div>
+              <div className="flex-1 min-w-0">
                 <h3 className={`font-bold text-lg leading-none mb-1 ${
                   lastScan.status === 'VALID' ? 'text-green-400' : 
                   lastScan.status === 'ALREADY_SCANNED' ? 'text-amber-400' : 
                   'text-red-400'
                 }`}>
-                  {lastScan.status === 'VALID' ? 'Billet Valide' : 
-                   lastScan.status === 'ALREADY_SCANNED' ? 'Déjà Scanné' : 
-                   'Billet Invalide'}
+                  {lastScan.status === 'VALID' ? '✅ Billet Valide' : 
+                   lastScan.status === 'ALREADY_SCANNED' ? '⚠️ Déjà Scanné' : 
+                   '❌ Billet Invalide'}
                 </h3>
                 <p className="text-sm text-gray-300">{lastScan.message}</p>
+                {lastScan.holderName && (
+                  <p className="text-sm font-semibold text-white mt-1">👤 {lastScan.holderName}</p>
+                )}
+                {lastScan.seat && (
+                  <p className="text-xs text-gray-400 mt-0.5">🪑 {lastScan.seat}</p>
+                )}
                 <div className="mt-2 text-xs text-gray-500 font-mono">
                   ID: {lastScan.ticketId}
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Processing indicator */}
+        {processingTicket && (
+          <div className="flex items-center justify-center gap-3 py-4 text-fuchsia-400">
+            <div className="w-5 h-5 border-2 border-fuchsia-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-medium">Vérification en cours...</span>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import type { PluginSection, PluginModule } from '../../types/plugin'
 
 interface PluginSidebarProps {
@@ -34,6 +34,7 @@ const PluginSidebar: React.FC<PluginSidebarProps> = ({
 }) => {
   return (
     <aside className={`bizos-sidebar ${isOpen ? 'open' : 'closed'}`}>
+      {/* Header logo */}
       <div className="bizos-sidebar-header">
         <div className="bizos-logo">
           <div className="bizos-logo-mark">{pluginIcon}</div>
@@ -44,12 +45,16 @@ const PluginSidebar: React.FC<PluginSidebarProps> = ({
             </div>
           )}
         </div>
-        <button className="bizos-sidebar-toggle" onClick={onToggle}
-          title={isOpen ? 'Réduire (Ctrl+B)' : 'Ouvrir (Ctrl+B)'}>
+        <button
+          className="bizos-sidebar-toggle"
+          onClick={onToggle}
+          title={isOpen ? 'Réduire (Ctrl+B)' : 'Ouvrir (Ctrl+B)'}
+        >
           {isOpen ? '◀' : '▶'}
         </button>
       </div>
 
+      {/* Search */}
       {showSearch && isOpen && (
         <div className="bizos-sidebar-search">
           <span className="bizos-search-icon">⌕</span>
@@ -61,11 +66,18 @@ const PluginSidebar: React.FC<PluginSidebarProps> = ({
             className="bizos-sidebar-search-input"
           />
           {searchQuery && (
-            <button className="bizos-search-clear" onClick={() => onSearch('')} title="Effacer">✕</button>
+            <button
+              className="bizos-search-clear"
+              onClick={() => onSearch('')}
+              title="Effacer"
+            >
+              ✕
+            </button>
           )}
         </div>
       )}
 
+      {/* Navigation sections */}
       <nav className="bizos-sidebar-nav">
         {sections.map(section => {
           const isCollapsed = collapsedSections.has(section.id) && isOpen
@@ -80,7 +92,9 @@ const PluginSidebar: React.FC<PluginSidebarProps> = ({
                   {section.icon && <span className="bizos-nav-section-icon">{section.icon}</span>}
                   <span className="bizos-nav-section-title">{section.title}</span>
                   {section.collapsible !== false && (
-                    <span className="bizos-nav-section-caret">{isCollapsed ? '▸' : '▾'}</span>
+                    <span className="bizos-nav-section-caret">
+                      {isCollapsed ? '▸' : '▾'}
+                    </span>
                   )}
                 </div>
               )}
@@ -103,8 +117,11 @@ const PluginSidebar: React.FC<PluginSidebarProps> = ({
         })}
       </nav>
 
+      {/* Footer */}
       {footer && isOpen && (
-        <div className="bizos-sidebar-footer">{footer}</div>
+        <div className="bizos-sidebar-footer">
+          {footer}
+        </div>
       )}
     </aside>
   )
@@ -126,7 +143,7 @@ const ModuleItem: React.FC<{
       {isOpen && (
         <>
           <span className="bizos-nav-module-name">{module.name}</span>
-          {module.badge !== undefined && (
+          {module.badge && (
             <span className="bizos-nav-module-badge">{module.badge}</span>
           )}
         </>

@@ -30,9 +30,7 @@ const PluginTabs: React.FC<PluginTabsProps> = ({
         >
           {tab.icon && <span className="bizos-tab-icon">{tab.icon}</span>}
           <span className="bizos-tab-label">{tab.label}</span>
-          {tab.badge !== undefined && (
-            <span className="bizos-tab-badge">{tab.badge}</span>
-          )}
+          {tab.badge && <span className="bizos-tab-badge">{tab.badge}</span>}
         </button>
       ))}
     </div>

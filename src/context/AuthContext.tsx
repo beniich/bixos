@@ -11,6 +11,20 @@ export interface User {
   organizationName: string;
   preferences?: any;
   loyalty?: any;
+  photoURL?: string;
+  phone?: string | null;
+  permissions?: string[];
+  allowedOrganizations?: any[];
+  subscriptionStatus?: string;
+  plan?: string;
+  planExpiresAt?: number | null;
+  trialEndsAt?: number | null;
+  seatsIncluded?: number;
+  seatsUsed?: number;
+  isActive?: boolean;
+  isSuspended?: boolean;
+  createdAt?: number;
+  lastLoginAt?: number;
 }
 
 interface Subscription {
@@ -122,7 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name,
         deviceId: getDeviceId(),
       });
-      await loadCurrentUser();
+      // Ne pas appeler loadCurrentUser() immédiatement car l'email n'est pas vérifié
+      // et le cookie de session n'est pas encore disponible côté client pour ce flux.
     },
     resetPassword: async (email) => { console.warn('Reset password via API non implémenté') },
     

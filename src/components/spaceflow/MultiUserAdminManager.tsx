@@ -107,7 +107,7 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
     const now = Date.now();
     const newUid = `user_inv_${now}`;
     const newUser: User = {
-      uid: newUid,
+      id: newUid,
       email: inviteEmail,
       displayName: inviteName,
       photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(inviteName)}`,

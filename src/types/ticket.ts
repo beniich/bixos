@@ -1,3 +1,5 @@
+import type { Seat, SeatSection, SeatCategory } from './seat'
+
 export type TicketFormat = 'STANDARD' | 'COMPACT' | 'PREMIUM' | 'BADGE' | 'E_TICKET'
 export type PaperSize = 'A4' | 'A5' | 'LETTER' | 'THERMAL_80MM' | 'THERMAL_58MM'
 export type PrintLayout = 'SINGLE' | 'TWO_COLUMN' | 'FOUR_GRID' | 'BADGE_SHEET' | 'AVERY_5160' | 'AVERY_5163'
@@ -30,6 +32,7 @@ export interface TicketDesign {
   showRefundPolicy: boolean
   customMessage?: string
 
+  // Champs affichés
   fields: {
     eventTitle: boolean
     eventDate: boolean
@@ -56,6 +59,7 @@ export interface TicketDesign {
 export interface TicketData {
   id: string
   reference: string
+  bookingId?: string
   ticketConfigId: string
   ticketName: string
   tier: 'STANDARD' | 'PREMIUM' | 'VIP' | 'GENERAL'
@@ -64,6 +68,7 @@ export interface TicketData {
   signature: string
   status: 'VALID' | 'USED' | 'CANCELLED' | 'RESERVED'
 
+  // Événement
   eventId: string
   event: {
     id: string
@@ -75,9 +80,13 @@ export interface TicketData {
     logo?: string
     category: string
     type: string
-    organizer: { name: string; logo?: string }
+    organizer: {
+      name: string
+      logo?: string
+    }
   }
 
+  // Lieu
   venue: {
     id: string
     name: string
@@ -86,6 +95,7 @@ export interface TicketData {
     gates: Array<{ id: string; name: string }>
   }
 
+  // Siège
   seat: {
     id: string
     section: string
@@ -96,6 +106,7 @@ export interface TicketData {
     accessible?: boolean
   }
 
+  // Détenteur
   holder: {
     firstName: string
     lastName: string
@@ -104,6 +115,7 @@ export interface TicketData {
     phone?: string
   }
 
+  // Prix
   pricing: {
     unitPrice: number
     fees: number
@@ -111,6 +123,7 @@ export interface TicketData {
     currency: string
   }
 
+  // Métadonnées
   issuedAt: number
   validUntil?: number
   gate?: string

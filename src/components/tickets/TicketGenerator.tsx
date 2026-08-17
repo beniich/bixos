@@ -40,7 +40,7 @@ const DEFAULT_DESIGN: TicketDesign = {
   showOrganizer: true,
   showTerms: true,
   showRefundPolicy: true,
-  customMessage: "Présentez ce billet à l'entrée. Billet non remboursable.",
+  customMessage: 'Présentez ce billet à l\'entrée. Billet non remboursable.',
   fields: {
     eventTitle: true,
     eventDate: true,
@@ -89,6 +89,9 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({
     pdfFilename: `billets-${eventContext?.title || 'event'}-${Date.now()}`
   }), [design, tickets, selectedTicketIds, eventContext])
 
+  // ============================================
+  // GÉNÉRATION PDF
+  // ============================================
   const handleGeneratePDF = useCallback(async () => {
     if (printConfig.tickets.length === 0) {
       alert('Veuillez sélectionner au moins un billet')
@@ -99,7 +102,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({
     setGeneratingProgress(0)
 
     try {
-      const blob = await generatePDF(printConfig, (progress) => {
+      const blob = await generatePDF(printConfig, (progress: number) => {
         setGeneratingProgress(progress)
       })
 
@@ -117,6 +120,9 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({
     }
   }, [printConfig, onGenerate])
 
+  // ============================================
+  // IMPRESSION DIRECTE
+  // ============================================
   const handlePrint = useCallback(async () => {
     if (printConfig.tickets.length === 0) {
       alert('Veuillez sélectionner au moins un billet')
@@ -139,6 +145,9 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({
     }
   }, [printConfig, onPrint])
 
+  // ============================================
+  // SÉLECTION
+  // ============================================
   const toggleTicket = (id: string) => {
     setSelectedTicketIds(prev => {
       const next = new Set(prev)
@@ -151,46 +160,54 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({
     })
   }
 
-  const selectAll = () => setSelectedTicketIds(new Set(tickets.map(t => t.id)))
-  const deselectAll = () => setSelectedTicketIds(new Set())
+  const selectAll = () => {
+    setSelectedTicketIds(new Set(tickets.map(t => t.id)))
+  }
+
+  const deselectAll = () => {
+    setSelectedTicketIds(new Set())
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bizos-bg, #0a0e1a)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+    <div className="ticket-generator">
+      <div className="ticket-generator-header">
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#e2e8f0' }}>🎫 Génération de Billets</h2>
-          <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-            {tickets.length} billet{tickets.length > 1 ? 's' : ''} disponible{tickets.length > 1 ? 's' : ''} ·{' '}
-            <strong style={{ color: '#00e5ff' }}>{selectedTicketIds.size}</strong> sélectionné{selectedTicketIds.size > 1 ? 's' : ''}
+          <h2>🎫 Génération de Billets</h2>
+          <p>
+            {tickets.length} billet{tickets.length > 1 ? 's' : ''} disponible{tickets.length > 1 ? 's' : ''}
+            {' · '}
+            <strong>{selectedTicketIds.size}</strong> sélectionné{selectedTicketIds.size > 1 ? 's' : ''}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 8 }}>
-          {[
-            { id: 'preview', label: '👁 Aperçu' },
-            { id: 'grid', label: '▦ Grille' },
-            { id: 'sheet', label: '🖨 Planche' }
-          ].map(view => (
-            <button
-              key={view.id}
-              onClick={() => setActiveView(view.id as any)}
-              style={{
-                padding: '6px 16px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                background: activeView === view.id ? 'rgba(0,229,255,0.15)' : 'transparent',
-                color: activeView === view.id ? '#00e5ff' : 'rgba(255,255,255,0.5)'
-              }}
-            >
-              {view.label}
-            </button>
-          ))}
+        <div className="ticket-generator-actions">
+          <button
+            className="bizos-btn bizos-btn-secondary"
+            onClick={() => setActiveView('preview')}
+            disabled={activeView === 'preview'}
+          >
+            👁 Aperçu
+          </button>
+          <button
+            className="bizos-btn bizos-btn-secondary"
+            onClick={() => setActiveView('grid')}
+            disabled={activeView === 'grid'}
+          >
+            ▦ Grille
+          </button>
+          <button
+            className="bizos-btn bizos-btn-secondary"
+            onClick={() => setActiveView('sheet')}
+            disabled={activeView === 'sheet'}
+          >
+            🖨 Planche
+          </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar Config */}
-        <aside style={{ width: 360, minWidth: 360, borderRight: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+      <div className="ticket-generator-layout">
+        {/* Colonne configuration (gauche) */}
+        <aside className="ticket-generator-config">
           <PrintConfigPanel
             design={design}
             onChange={setDesign}
@@ -207,79 +224,101 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({
           />
         </aside>
 
-        {/* Workspace */}
-        <main style={{ flex: 1, overflow: 'auto', padding: 24, position: 'relative', background: 'rgba(0,0,0,0.2)' }}>
+        {/* Zone principale (centre) */}
+        <main className="ticket-generator-main">
           {activeView === 'preview' && (
-            <div ref={previewRef} style={{ display: 'flex', flexWrap: 'wrap', gap: 24, justifyContent: 'center' }}>
+            <div className="ticket-preview-wrapper" ref={previewRef}>
               {printConfig.tickets.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', marginTop: 100 }}>
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>🎫</div>
+                <div className="bizos-empty">
+                  <div className="bizos-empty-icon">🎫</div>
                   <p>Sélectionnez des billets pour voir l'aperçu</p>
                 </div>
               ) : (
-                <>
+                <div className="ticket-preview-list">
                   {printConfig.tickets.slice(0, 3).map(ticket => (
-                    <TicketPreview key={ticket.id} ticket={ticket} design={design} />
+                    <div key={ticket.id} className="ticket-preview-item">
+                      <TicketPreview
+                        ticket={ticket}
+                        design={design}
+                        interactive={false}
+                      />
+                    </div>
                   ))}
                   {printConfig.tickets.length > 3 && (
-                    <div style={{ width: '100%', textAlign: 'center', padding: 24, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.03)', borderRadius: 12 }}>
+                    <div className="ticket-preview-more">
                       + {printConfig.tickets.length - 3} autres billets
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           )}
 
           {activeView === 'grid' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            <div className="ticket-grid">
               {tickets.map(ticket => (
-                <label key={ticket.id} style={{ display: 'block', cursor: 'pointer', position: 'relative' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedTicketIds.has(ticket.id)}
-                    onChange={() => toggleTicket(ticket.id)}
-                    style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, width: 20, height: 20, accentColor: '#00e5ff' }}
-                  />
-                  <div style={{ opacity: selectedTicketIds.has(ticket.id) ? 1 : 0.5, transition: 'opacity 0.2s', border: selectedTicketIds.has(ticket.id) ? '2px solid #00e5ff' : '2px solid transparent', borderRadius: 14 }}>
-                    <TicketPreview ticket={ticket} design={design} interactive={false} compact />
-                  </div>
-                </label>
+                <div
+                  key={ticket.id}
+                  className={`ticket-grid-item ${selectedTicketIds.has(ticket.id) ? 'selected' : ''}`}
+                >
+                  <label className="ticket-grid-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedTicketIds.has(ticket.id)}
+                      onChange={() => toggleTicket(ticket.id)}
+                    />
+                    <TicketPreview
+                      ticket={ticket}
+                      design={design}
+                      interactive={false}
+                      compact
+                    />
+                  </label>
+                </div>
               ))}
             </div>
           )}
 
           {activeView === 'sheet' && (
-            <BadgeLayout tickets={printConfig.tickets} design={design} />
+            <BadgeLayout
+              tickets={printConfig.tickets}
+              design={design}
+            />
           )}
         </main>
       </div>
 
-      {/* Footer Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.3)' }}>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+      {/* Footer actions */}
+      <div className="ticket-generator-footer">
+        <div className="ticket-generator-info">
           {generating ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="bizos-loader-spinner" style={{ width: 16, height: 16, border: '2px solid rgba(0,229,255,0.2)', borderTopColor: '#00e5ff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <div className="generation-progress">
+              <div className="bizos-loader-spinner" />
               <span>Génération en cours... {generatingProgress}%</span>
+              <div className="progress-bar-mini">
+                <div
+                  className="progress-fill-mini"
+                  style={{ width: `${generatingProgress}%` }}
+                />
+              </div>
             </div>
           ) : (
             <span>Format: {design.format} · {design.layout} · {design.paperSize}</span>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div className="ticket-generator-buttons">
           <button
+            className="bizos-btn bizos-btn-secondary"
             onClick={handlePrint}
             disabled={generating || selectedTicketIds.size === 0}
-            style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#e2e8f0', cursor: (generating || selectedTicketIds.size === 0) ? 'not-allowed' : 'pointer', opacity: (generating || selectedTicketIds.size === 0) ? 0.5 : 1, fontWeight: 600 }}
           >
             🖨 Imprimer
           </button>
           <button
+            className="bizos-btn bizos-btn-primary"
             onClick={handleGeneratePDF}
             disabled={generating || selectedTicketIds.size === 0}
-            style={{ padding: '10px 20px', background: '#00e5ff', border: 'none', borderRadius: 8, color: '#0a0e1a', cursor: (generating || selectedTicketIds.size === 0) ? 'not-allowed' : 'pointer', opacity: (generating || selectedTicketIds.size === 0) ? 0.5 : 1, fontWeight: 800, boxShadow: '0 0 15px rgba(0,229,255,0.3)' }}
           >
             {generating ? '⟳ Génération...' : '📄 Télécharger PDF'}
           </button>

@@ -1,145 +1,345 @@
-/**
- * PDF Generator — Génère un PDF à partir d'une PrintConfig
- * Utilise l'API print du navigateur via une iframe.
- * Pour une vraie génération PDF, intégrez jsPDF ou pdfmake.
- */
-import type { PrintConfig } from '../types/ticket'
+import { jsPDF } from 'jspdf'
+import QRCode from 'qrcode'
+import type {
+  TicketData,
+  TicketDesign,
+  PrintConfig,
+  PrintLayout,
+  PaperSize
+} from '../types/ticket'
 
-export type ProgressCallback = (progress: number) => void
-
 /**
- * Génère un Blob PDF à partir d'une PrintConfig.
- * Simulation avec printable HTML → Blob.
+ * Génère un PDF à partir d'une config d'impression
  */
-export async function generatePDF(
+export const generatePDF = async (
   config: PrintConfig,
-  onProgress?: ProgressCallback
-): Promise<Blob> {
-  onProgress?.(10)
-
-  const html = buildPrintHTML(config)
-
-  onProgress?.(50)
-
-  // Créer un Blob HTML (dans un vrai projet, ici on utiliserait jsPDF)
-  const blob = new Blob([html], { type: 'text/html; charset=utf-8' })
-
-  onProgress?.(100)
-
-  return blob
-}
-
-function buildPrintHTML(config: PrintConfig): string {
+  onProgress?: (progress: number) => void
+): Promise<Blob> => {
   const { design, tickets } = config
 
-  const ticketCards = tickets.map(ticket => `
-    <div class="ticket-card tier-${ticket.tier.toLowerCase()}">
-      <div class="tier-band" style="background: ${getTierColor(ticket.tier)};">
-        <span>${ticket.tier}</span>
-        <span>ECOASSET</span>
-      </div>
-      <div class="ticket-body">
-        <h2>${ticket.event.title}</h2>
-        <p class="date">${new Date(ticket.event.startDate).toLocaleString('fr-FR')}</p>
-        <div class="venue">📍 ${ticket.venue.name}, ${ticket.venue.city}</div>
-        <div class="seat-row">
-          <div class="seat-box">
-            <small>Section</small>
-            <strong>${ticket.seat.section}</strong>
-          </div>
-          <div class="seat-box">
-            <small>Rangée</small>
-            <strong>${ticket.seat.row}</strong>
-          </div>
-          <div class="seat-box highlight" style="background: ${getTierColor(ticket.tier)};">
-            <small>Siège</small>
-            <strong>${ticket.seat.number}</strong>
-          </div>
-        </div>
-        <div class="footer">
-          <code class="ref">${ticket.reference}</code>
-          <strong class="price">${ticket.pricing.total.toFixed(2)} ${ticket.pricing.currency}</strong>
-        </div>
-        ${design.fields.ticketHolder ? `<div class="holder">Détenteur: <strong>${ticket.holder.fullName}</strong></div>` : ''}
-        ${design.customMessage ? `<div class="message">${design.customMessage}</div>` : ''}
-        ${design.showOrganizer ? `<div class="organizer">Par ${ticket.event.organizer.name}</div>` : ''}
-      </div>
-    </div>
-  `).join('')
+  // Initialiser jsPDF
+  const doc = new jsPDF({
+    orientation: design.orientation,
+    unit: 'mm',
+    format: normalizePaperSize(design.paperSize),
+    compress: true
+  })
 
-  return `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <title>${config.pdfFilename}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Arial', sans-serif; background: #f5f5f5; padding: ${design.marginMm}mm; }
-    .page { 
-      display: grid; 
-      grid-template-columns: ${getGridColumns(config.design.layout)}; 
-      gap: ${design.spacingMm}mm;
-      background: white;
-      padding: ${design.marginMm}mm;
-      max-width: ${getPaperWidth(design.paperSize)}mm;
-      margin: 0 auto;
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+
+  // Dimensions d'un billet
+  const layoutInfo = getLayoutInfo(design.layout)
+  const ticketsPerPage = layoutInfo.perPage
+  const cols = layoutInfo.cols
+  const rows = layoutInfo.rows
+
+  const availableWidth = pageWidth - design.marginMm * 2 - design.spacingMm * (cols - 1)
+  const availableHeight = pageHeight - design.marginMm * 2 - design.spacingMm * (rows - 1)
+  const cellWidth = availableWidth / cols
+  const cellHeight = availableHeight / rows
+
+  // Pré-générer tous les QR codes (async)
+  const qrCache = new Map<string, string>()
+  const ticketsWithQR = await Promise.all(
+    tickets.map(async (ticket) => {
+      if (!qrCache.has(ticket.qrPayload)) {
+        try {
+          const qr = await QRCode.toDataURL(ticket.qrPayload, {
+            errorCorrectionLevel: 'H',
+            margin: 0,
+            width: 200,
+            color: { dark: '#000000', light: '#ffffff' }
+          })
+          qrCache.set(ticket.qrPayload, qr)
+        } catch (e) {
+          console.error('Erreur QR:', e)
+          qrCache.set(ticket.qrPayload, '')
+        }
+      }
+      return ticket
+    })
+  )
+
+  // Générer les pages
+  const totalPages = Math.max(1, Math.ceil(ticketsWithQR.length / ticketsPerPage))
+  let currentPage = 0
+
+  for (let i = 0; i < ticketsWithQR.length; i += ticketsPerPage) {
+    currentPage++
+    onProgress?.(Math.round((currentPage / totalPages) * 100))
+
+    if (i > 0) doc.addPage()
+
+    const pageTickets = ticketsWithQR.slice(i, i + ticketsPerPage)
+
+    for (let j = 0; j < pageTickets.length; j++) {
+      const ticket = pageTickets[j]
+      const col = j % cols
+      const row = Math.floor(j / cols)
+
+      const x = design.marginMm + col * (cellWidth + design.spacingMm)
+      const y = design.marginMm + row * (cellHeight + design.spacingMm)
+
+      await renderTicketToPDF(
+        doc,
+        ticket,
+        design,
+        x,
+        y,
+        cellWidth,
+        cellHeight,
+        qrCache.get(ticket.qrPayload) || ''
+      )
     }
-    .ticket-card { border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
-    .tier-band { padding: 8px 12px; display: flex; justify-content: space-between; color: white; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-    .ticket-body { padding: 12px; background: white; }
-    .ticket-body h2 { font-size: 14px; margin-bottom: 6px; color: #1a202c; }
-    .date { font-size: 11px; color: #64748b; margin-bottom: 8px; }
-    .venue { font-size: 11px; color: #64748b; margin-bottom: 10px; }
-    .seat-row { display: flex; gap: 8px; margin-bottom: 10px; }
-    .seat-box { flex: 1; text-align: center; padding: 6px; background: #f8fafc; border-radius: 6px; }
-    .seat-box small { display: block; font-size: 8px; color: #94a3b8; text-transform: uppercase; }
-    .seat-box strong { font-size: 16px; color: #1a202c; }
-    .seat-box.highlight { color: white; }
-    .seat-box.highlight small { color: rgba(255,255,255,0.7); }
-    .seat-box.highlight strong { color: white; }
-    .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
-    .ref { font-size: 9px; background: #f1f5f9; padding: 3px 6px; border-radius: 4px; color: #64748b; }
-    .price { font-size: 14px; font-weight: 800; color: #1a202c; }
-    .holder { font-size: 10px; color: #64748b; margin-top: 6px; }
-    .message { font-size: 9px; color: #94a3b8; margin-top: 6px; font-style: italic; }
-    .organizer { font-size: 9px; color: #94a3b8; margin-top: 4px; text-align: right; }
-    @media print { body { padding: 0; } }
-  </style>
-</head>
-<body>
-  <div class="page">
-    ${ticketCards}
-  </div>
-</body>
-</html>`
+
+    // Footer de page
+    renderPageFooter(doc, design, currentPage, totalPages)
+  }
+
+  // Retourner le blob
+  return doc.output('blob')
 }
 
-function getTierColor(tier: string): string {
-  const colors: Record<string, string> = {
-    STANDARD: '#0ea5e9',
-    PREMIUM: '#a855f7',
-    VIP: '#f59e0b',
-    GENERAL: '#64748b'
+// ============================================
+// RENDU D'UN BILLET
+// ============================================
+const renderTicketToPDF = async (
+  doc: jsPDF,
+  ticket: TicketData,
+  design: TicketDesign,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  qrDataUrl: string
+): Promise<void> => {
+  const tierColors: Record<string, [number, number, number]> = {
+    STANDARD: [0, 229, 255],
+    PREMIUM: [255, 0, 170],
+    VIP: [255, 184, 0],
+    GENERAL: [139, 146, 168]
   }
-  return colors[tier] || '#0ea5e9'
+  const tierColor = tierColors[ticket.tier] || [0, 229, 255]
+
+  // Fond
+  const bgColor = hexToRgb(design.backgroundColor)
+  doc.setFillColor(bgColor[0], bgColor[1], bgColor[2])
+  doc.roundedRect(x, y, width, height, 2, 2, 'F')
+
+  // Bordure tier
+  doc.setDrawColor(tierColor[0], tierColor[1], tierColor[2])
+  doc.setLineWidth(0.3)
+  doc.roundedRect(x, y, width, height, 2, 2, 'S')
+
+  // Bandeau supérieur (tier)
+  doc.setFillColor(tierColor[0], tierColor[1], tierColor[2])
+  doc.roundedRect(x, y, width, 7, 2, 2, 'F')
+  // Carré bas du bandeau (pour l'angle droit)
+  doc.rect(x, y + 5, width, 2, 'F')
+
+  // Texte tier
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'bold')
+  doc.text(ticket.tier, x + 2, y + 5)
+
+  // Logo (si activé)
+  if (design.showLogo) {
+    doc.setFontSize(6)
+    doc.text('ECOASSET', x + width - 2, y + 5, { align: 'right' })
+  }
+
+  // Titre événement
+  const textColor = hexToRgb(design.textColor)
+  doc.setTextColor(textColor[0], textColor[1], textColor[2])
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+
+  const titleLines = doc.splitTextToSize(ticket.event.title, width - 4)
+  const truncatedLines = titleLines.slice(0, 2)
+  doc.text(truncatedLines, x + 2, y + 12)
+
+  let currentY = y + 12 + (truncatedLines.length * 4) + 1
+
+  // Date
+  if (design.fields.eventDate) {
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    const dateStr = new Date(ticket.event.startDate).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+    doc.text(`📅 ${dateStr}`, x + 2, currentY)
+    currentY += 3.5
+  }
+
+  // Heure
+  if (design.fields.eventTime) {
+    doc.setFontSize(7)
+    const timeStr = new Date(ticket.event.startDate).toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    doc.text(`🕐 ${timeStr}`, x + 2, currentY)
+    currentY += 3.5
+  }
+
+  // Lieu
+  if (design.fields.venueName) {
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'bold')
+    const venueName = doc.splitTextToSize(`📍 ${ticket.venue.name}`, width - 4)[0]
+    doc.text(venueName, x + 2, currentY)
+    currentY += 3.5
+  }
+
+  if (design.fields.venueAddress && height > 50) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6)
+    doc.setTextColor(textColor[0], textColor[1], textColor[2], 0.6)
+    const addr = `${ticket.venue.address}, ${ticket.venue.city}`
+    const addrLines = doc.splitTextToSize(addr, width - 4)
+    if (addrLines.length > 0) {
+      doc.text(addrLines[0], x + 2, currentY)
+      currentY += 3
+    }
+  }
+
+  // QR Code
+  if (design.showQrCode && qrDataUrl) {
+    try {
+      const qrSize = Math.min(width * 0.35, height * 0.35, 28)
+      doc.addImage(
+        qrDataUrl,
+        'PNG',
+        x + width - qrSize - 2,
+        y + height - qrSize - 6,
+        qrSize,
+        qrSize
+      )
+    } catch (e) {
+      console.error('Erreur insertion QR:', e)
+    }
+  }
+
+  // Siège (bas)
+  if (design.fields.section || design.fields.seatRow || design.fields.seatNumber) {
+    doc.setFontSize(7)
+    doc.setTextColor(textColor[0], textColor[1], textColor[2])
+    doc.setFont('helvetica', 'normal')
+    doc.text('Siège', x + 2, y + height - 14)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(tierColor[0], tierColor[1], tierColor[2])
+    const seatStr = `${ticket.seat.section} ${ticket.seat.row}${ticket.seat.number}`
+    doc.text(seatStr, x + 2, y + height - 9)
+  }
+
+  // Prix
+  if (design.fields.price) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(tierColor[0], tierColor[1], tierColor[2])
+    const priceStr = `${ticket.pricing.total.toFixed(2)} ${ticket.pricing.currency}`
+    doc.text(priceStr, x + width - 2, y + height - 3, { align: 'right' })
+  }
+
+  // Référence
+  if (design.fields.reference) {
+    doc.setFontSize(5)
+    doc.setFont('courier', 'normal')
+    doc.setTextColor(120, 120, 120)
+    doc.text(ticket.reference, x + 2, y + height - 1)
+  }
+
+  // Watermark
+  if (design.watermark) {
+    doc.setTextColor(220, 220, 220)
+    doc.setFontSize(36)
+    doc.setFont('helvetica', 'bold')
+    doc.text(design.watermark, x + width / 2, y + height / 2, {
+      align: 'center',
+      angle: 30
+    })
+  }
+
+  // Détenteur (verso ou bas)
+  if (design.fields.ticketHolder) {
+    doc.setFontSize(6)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(textColor[0], textColor[1], textColor[2])
+    doc.text(ticket.holder.fullName, x + 2, y + height - 6)
+  }
 }
 
-function getGridColumns(layout: string): string {
-  const map: Record<string, string> = {
-    SINGLE: '1fr',
-    TWO_COLUMN: '1fr 1fr',
-    FOUR_GRID: '1fr 1fr',
-    BADGE_SHEET: '1fr 1fr',
-    AVERY_5160: '1fr 1fr 1fr',
-    AVERY_5163: '1fr 1fr'
-  }
-  return map[layout] || '1fr'
+// ============================================
+// FOOTER DE PAGE
+// ============================================
+const renderPageFooter = (
+  doc: jsPDF,
+  design: TicketDesign,
+  pageNum: number,
+  totalPages: number
+): void => {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+
+  doc.setFontSize(6)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(150, 150, 150)
+  doc.text(
+    `ECOASSET · Billets officiels · Page ${pageNum} / ${totalPages}`,
+    pageWidth / 2,
+    pageHeight - 3,
+    { align: 'center' }
+  )
 }
 
-function getPaperWidth(paperSize: string): number {
-  const map: Record<string, number> = {
-    A4: 210, A5: 148, LETTER: 216,
-    THERMAL_80MM: 80, THERMAL_58MM: 58
+// ============================================
+// UTILITAIRES
+// ============================================
+const normalizePaperSize = (size: PaperSize): string | [number, number] => {
+  const map: Record<PaperSize, string | [number, number]> = {
+    A4: 'a4',
+    A5: 'a5',
+    LETTER: 'letter',
+    THERMAL_80MM: [80, 297],
+    THERMAL_58MM: [58, 297]
   }
-  return map[paperSize] || 210
+  return map[size]
 }
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result
+    ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+      ]
+    : [10, 14, 26]
+}
+
+interface LayoutInfo {
+  perPage: number
+  cols: number
+  rows: number
+}
+
+const getLayoutInfo = (layout: PrintLayout): LayoutInfo => {
+  const map: Record<PrintLayout, LayoutInfo> = {
+    SINGLE:      { perPage: 1,  cols: 1, rows: 1 },
+    TWO_COLUMN:  { perPage: 2,  cols: 2, rows: 1 },
+    FOUR_GRID:   { perPage: 4,  cols: 2, rows: 2 },
+    BADGE_SHEET: { perPage: 10, cols: 2, rows: 5 },
+    AVERY_5160:  { perPage: 30, cols: 3, rows: 10 },
+    AVERY_5163:  { perPage: 20, cols: 2, rows: 10 }
+  }
+  return map[layout] || map.TWO_COLUMN
+}
+
+// Export pour réutilisation
+export { normalizePaperSize, hexToRgb, getLayoutInfo }

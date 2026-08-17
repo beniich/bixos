@@ -45,21 +45,28 @@ export interface BizOSPluginProps {
   activeModule: string
   onModuleChange: (moduleId: string) => void
 
+  // Header
   breadcrumb?: Array<{ label: string; href?: string }>
   pageTitle?: string
   pageSubtitle?: string
   headerActions?: ReactNode
 
+  // Content
   children: ReactNode
   sidebarFooter?: ReactNode
   toolbar?: ReactNode
 
+  // Data context
   dataContext?: PluginDataContext
+
+  // Theming
   theme?: PluginTheme
 
+  // État
   loading?: boolean
   error?: string | null
 
+  // Callbacks
   onSearch?: (query: string) => void
   onNotificationClick?: () => void
   onProfileClick?: () => void
