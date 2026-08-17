@@ -1,7 +1,9 @@
 import React, { useEffect, useState, ReactNode } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Loader2, ShieldX, CreditCard, Mail } from 'lucide-react';
+import { ShieldX, CreditCard, Mail } from 'lucide-react';
 import { PageId } from '../../types';
+import '../../styles/auth.css';
+
 
 export type GuardMode = 'public' | 'protected' | 'admin-only' | 'subscription-required';
 
@@ -95,9 +97,20 @@ export function RouteGuard({
 
   if (guardState === 'checking' || loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white">
-        <Loader2 className="w-12 h-12 text-violet-500 animate-spin mb-4" />
-        <p className="text-gray-400">Vérification de la sécurité...</p>
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: '#141414', gap: 16
+      }}>
+        <span style={{
+          width: 36, height: 36,
+          border: '2.5px solid rgba(255,255,255,0.1)',
+          borderTopColor: '#f38020',
+          borderRadius: '50%',
+          display: 'inline-block',
+          animation: 'auth-spin 0.7s linear infinite'
+        }} />
+        <p style={{ color: '#888', fontSize: 14 }}>Vérification en cours…</p>
       </div>
     );
   }
@@ -142,19 +155,39 @@ export function RouteGuard({
     };
     
     const m = messages[denyReason];
-    const Icon = m.icon;
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-6 text-center">
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-10 max-w-md w-full backdrop-blur-xl">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-red-500/10 mb-6">
-            <Icon className="w-10 h-10 text-red-400" />
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: '#141414', color: '#fafafa', padding: 24, textAlign: 'center'
+      }}>
+        <div style={{
+          background: '#1e1e1e', border: '1px solid #333',
+          borderRadius: 20, padding: '48px 40px', maxWidth: 420, width: '100%'
+        }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px', fontSize: 28
+          }}>
+            🔒
           </div>
-          <h1 className="text-2xl font-bold mb-3">{m.title}</h1>
-          <p className="text-gray-400 mb-8">{m.subtitle}</p>
-          <button 
+          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, letterSpacing: -0.4 }}>
+            {m.title}
+          </h1>
+          <p style={{ color: '#888', fontSize: 14, lineHeight: 1.6, marginBottom: 32 }}>
+            {m.subtitle}
+          </p>
+          <button
             onClick={m.action}
-            className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold transition-colors"
+            style={{
+              width: '100%', padding: '12px 20px', background: '#fafafa',
+              color: '#141414', border: 'none', borderRadius: 10,
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit', transition: 'all 0.2s'
+            }}
           >
             {m.actionLabel}
           </button>

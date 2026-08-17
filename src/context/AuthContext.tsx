@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { apiClient } from '../lib/api-client';
 import { getDeviceId } from '../lib/device-id';
 
@@ -40,20 +40,25 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   hasActiveSubscription: boolean;
   isAdmin: boolean;
-  profile: any; // Keep this for backward compatibility if needed temporarily
-  
+  isOrganizer: boolean;
+  needsVerification: boolean;
+  profile: any; // backward compat
+
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   refresh: () => Promise<void>;
 
-  // Nouvelles méthodes EcoAsset / Ticketing
+  // Auth methods
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithGithub: () => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resendVerification: (email?: string) => Promise<void>;
+
   hasPermission: (resource: string, action: 'create' | 'read' | 'update' | 'delete') => boolean;
-  isOrganizer: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -62,45 +67,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Au mount : fetch /me pour voir si cookie session existe
-  useEffect(() => {
-    loadCurrentUser();
-  }, []);
-  
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+
+  useEffect(() => { loadCurrentUser(); }, []);
+
   async function loadCurrentUser() {
     try {
       const data = await apiClient.get<{ user: User; subscription: Subscription }>('/api/auth/me');
       setUser(data.user);
       setSubscription(data.subscription);
-    } catch (err) {
-      // Pas de session → reste déconnecté
+      setNeedsVerification(false);
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
   }
-  
+
   async function login(email: string, password: string) {
     await apiClient.post<{ user: User }>('/api/auth/login', {
       email,
       password,
       deviceId: getDeviceId(),
     });
-    
-    // Maintenant on fetch /me pour avoir subscription
     await loadCurrentUser();
   }
-  
+
   async function logout() {
     try {
       await apiClient.post('/api/auth/logout', {});
     } finally {
       setUser(null);
       setSubscription(null);
+      setNeedsVerification(false);
+      setPendingEmail(null);
+      localStorage.removeItem('ecoasset_user');
     }
   }
-  
+
   async function logoutAll() {
     try {
       await apiClient.post('/api/auth/logout-all', {});
@@ -109,50 +114,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSubscription(null);
     }
   }
-  
-  async function refresh() {
-    await loadCurrentUser();
-  }
-  
+
+  async function refresh() { await loadCurrentUser(); }
+
+  const signUp = useCallback(async (email: string, password: string, name: string) => {
+    await apiClient.post<{ user: User }>('/api/auth/register', {
+      email,
+      password,
+      name,
+      deviceId: getDeviceId(),
+    });
+    setPendingEmail(email);
+    setNeedsVerification(true);
+    // ne pas charger la session â€” email non vÃ©rifiÃ©
+  }, []);
+
+  const forgotPassword = useCallback(async (email: string) => {
+    await apiClient.post('/api/auth/forgot-password', { email });
+  }, []);
+
+  const resetPassword = forgotPassword; // alias
+
+  const resendVerification = useCallback(async (email?: string) => {
+    const target = email || pendingEmail;
+    if (!target) return;
+    await apiClient.post('/api/auth/resend-verification', { email: target });
+  }, [pendingEmail]);
+
+  const signInWithGoogle = useCallback(async () => {
+    // Redirige vers OAuth Google
+    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL ?? '';
+    window.location.href = `${apiBase}/api/auth/google`;
+  }, []);
+
+  const signInWithGithub = useCallback(async () => {
+    const apiBase = (import.meta as any).env?.VITE_API_BASE_URL ?? '';
+    window.location.href = `${apiBase}/api/auth/github`;
+  }, []);
+
+  const hasPermission = useCallback(
+    (resource: string, action: 'create' | 'read' | 'update' | 'delete') => {
+      if (!user) return false;
+      if (user.role === 'SUPER_ADMIN') return true;
+      return true; // TODO: map role permissions
+    },
+    [user]
+  );
+
   const value: AuthContextValue = {
     user,
-    profile: user,
+    profile: user, // backward compat
     subscription,
     loading,
     isAuthenticated: !!user,
-    hasActiveSubscription: subscription 
+    hasActiveSubscription: subscription
       ? ['trial', 'active'].includes(subscription.status) || user?.role === 'SUPER_ADMIN'
       : false,
     isAdmin: user ? ['SUPER_ADMIN', 'ORG_MANAGER', 'SITE_ADMIN'].includes(user.role) : false,
     isOrganizer: user ? ['ORGANIZER', 'EVENT_MANAGER', 'SUPER_ADMIN'].includes(user.role) : false,
-    
-    login,
-    signIn: login, // alias
-    signInWithGoogle: async () => { console.warn('Google Auth via API non implémenté') },
-    signUp: async (email, password, name) => {
-      await apiClient.post<{ user: User }>('/api/auth/register', {
-        email,
-        password,
-        name,
-        deviceId: getDeviceId(),
-      });
-      // Ne pas appeler loadCurrentUser() immédiatement car l'email n'est pas vérifié
-      // et le cookie de session n'est pas encore disponible côté client pour ce flux.
-    },
-    resetPassword: async (email) => { console.warn('Reset password via API non implémenté') },
-    
-    hasPermission: (resource, action) => {
-      if (!user) return false;
-      if (user.role === 'SUPER_ADMIN') return true;
-      // Logique simple pour l'instant
-      return true;
-    },
+    needsVerification,
 
+    login,
+    signIn: login,
+    signInWithGoogle,
+    signInWithGithub,
+    signUp,
     logout,
     logoutAll,
     refresh,
+    resetPassword,
+    forgotPassword,
+    resendVerification,
+    hasPermission,
   };
-  
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
@@ -161,3 +196,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be inside AuthProvider');
   return ctx;
 }
+

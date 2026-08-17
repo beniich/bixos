@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import '../../styles/auth.css';
 
-// Politique de mot de passe — miroir côté client
 const PASSWORD_RULES = [
-  { test: (p: string) => p.length >= 12, label: '12 caractères minimum' },
-  { test: (p: string) => /[A-Z]/.test(p), label: '1 majuscule' },
-  { test: (p: string) => /[a-z]/.test(p), label: '1 minuscule' },
-  { test: (p: string) => /[0-9]/.test(p), label: '1 chiffre' },
-  { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: '1 caractère spécial' },
+  { test: (p: string) => p.length >= 8,           label: '8 caractÃ¨res min.' },
+  { test: (p: string) => /[A-Z]/.test(p),          label: '1 majuscule' },
+  { test: (p: string) => /[a-z]/.test(p),          label: '1 minuscule' },
+  { test: (p: string) => /[0-9]/.test(p),          label: '1 chiffre' },
+  { test: (p: string) => /[^A-Za-z0-9]/.test(p),  label: '1 caractÃ¨re spÃ©cial' },
 ];
 
 interface Props {
@@ -22,197 +23,174 @@ export const RegisterForm: React.FC<Props> = ({ onSuccess, onGoLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
 
-  const passwordRuleStatus = PASSWORD_RULES.map(r => ({
-    label: r.label,
-    ok: r.test(password),
-  }));
-
-  const passwordStrength = passwordRuleStatus.filter(r => r.ok).length;
+  const ruleStatus = PASSWORD_RULES.map(r => ({ label: r.label, ok: r.test(password) }));
+  const strengthScore = ruleStatus.filter(r => r.ok).length;
+  const strengthLabel = strengthScore <= 2 ? 'weak' : strengthScore <= 3 ? 'medium' : 'strong';
+  const pwMismatch = confirmPassword.length > 0 && confirmPassword !== password;
+  const canSubmit = !loading && name && email && password && !pwMismatch && strengthScore >= 4;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setFieldErrors([]);
 
-    if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
-      return;
-    }
-
-    const allRulesOk = passwordRuleStatus.every(r => r.ok);
-    if (!allRulesOk) {
-      setError('Votre mot de passe ne respecte pas tous les critères.');
-      return;
-    }
+    if (pwMismatch) { setError('Les mots de passe ne correspondent pas.'); return; }
+    if (strengthScore < 4) { setError('Le mot de passe ne respecte pas les critÃ¨res.'); return; }
 
     setLoading(true);
     try {
-      await signUp(email, password, name);
+      await signUp(email.trim().toLowerCase(), password, name.trim());
       setRegistered(true);
     } catch (err: any) {
       const msg = err?.message ?? '';
       if (msg.includes('EMAIL_TAKEN') || msg.includes('409')) {
-        setError('Un compte avec cet email existe déjà.');
+        setError('Un compte avec cet email existe dÃ©jÃ .');
       } else if (msg.includes('400')) {
-        setError('Mot de passe insuffisant ou données invalides.');
+        setError('DonnÃ©es invalides. VÃ©rifiez votre email et mot de passe.');
       } else if (msg.includes('429')) {
-        setError('Trop de créations de compte depuis cette adresse IP. Réessayez dans 1h.');
+        setError('Trop de tentatives. RÃ©essayez dans 1h.');
       } else {
-        setError('Une erreur est survenue. Réessayez.');
+        setError('Une erreur est survenue. RÃ©essayez.');
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // â”€â”€ Success state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (registered) {
     return (
-      <div className="auth-card">
-        <div className="auth-header">
-          <div className="auth-logo">✅</div>
-          <h1 className="auth-title">Compte créé !</h1>
-          <p className="auth-subtitle">
-            Un email de vérification a été envoyé à <strong>{email}</strong>.
-            Cliquez sur le lien dans l'email pour activer votre compte.
-          </p>
-        </div>
-        <button className="btn-primary" onClick={onGoLogin}>
-          Aller à la connexion
+      <div style={{ textAlign: 'center' }}>
+        <div className="auth-verify-icon">âœ…</div>
+        <h2 className="auth-verify-title">Compte crÃ©Ã© !</h2>
+        <p className="auth-verify-text">
+          Un email de vÃ©rification a Ã©tÃ© envoyÃ© Ã  <strong>{email}</strong>.<br />
+          Cliquez sur le lien pour activer votre compte.
+        </p>
+        <button className="auth-button-primary" type="button" onClick={onGoLogin}>
+          Aller Ã  la connexion <span className="auth-button-arrow">â†’</span>
         </button>
       </div>
     );
   }
 
   return (
-    <div className="auth-card">
-      <div className="auth-header">
-        <div className="auth-logo">⚡ BizOS</div>
-        <h1 className="auth-title">Créer un compte</h1>
-        <p className="auth-subtitle">Rejoignez la plateforme de gestion intelligente</p>
-      </div>
+    <div>
+      <h2 className="auth-form-title" style={{ fontSize: 22, marginBottom: 4 }}>CrÃ©er un compte</h2>
+      <p className="auth-form-subtitle">Rejoignez la plateforme de gestion BizOS</p>
 
-      <form onSubmit={handleSubmit} className="auth-form" noValidate>
-        <div className="form-group">
-          <label className="form-label" htmlFor="reg-name">Nom complet</label>
-          <input
-            id="reg-name"
-            type="text"
-            className="form-input"
-            placeholder="Jean Dupont"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            autoComplete="name"
-            minLength={2}
-            maxLength={100}
-            required
-            disabled={loading}
-          />
+      {error && (
+        <div className="auth-error-banner">
+          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} noValidate>
+        {/* Nom */}
+        <div className="auth-input-group">
+          <label className="auth-input-label" htmlFor="rf-name">Nom complet</label>
+          <div className="auth-input-wrapper">
+            <input
+              id="rf-name"
+              className="auth-input"
+              type="text"
+              placeholder="Jean Dupont"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              autoComplete="name"
+              minLength={2}
+              maxLength={100}
+              required
+              disabled={loading}
+            />
+          </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label" htmlFor="reg-email">Email</label>
-          <input
-            id="reg-email"
-            type="email"
-            className="form-input"
-            placeholder="vous@entreprise.com"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-            disabled={loading}
-          />
+        {/* Email */}
+        <div className="auth-input-group">
+          <label className="auth-input-label" htmlFor="rf-email">Email</label>
+          <div className="auth-input-wrapper">
+            <input
+              id="rf-email"
+              className="auth-input"
+              type="email"
+              placeholder="vous@entreprise.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+              disabled={loading}
+            />
+          </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label" htmlFor="reg-password">Mot de passe</label>
-          <input
-            id="reg-password"
-            type="password"
-            className="form-input"
-            placeholder="Minimum 12 caractères"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            autoComplete="new-password"
-            required
-            disabled={loading}
-          />
+        {/* Password */}
+        <div className="auth-input-group">
+          <label className="auth-input-label" htmlFor="rf-password">Mot de passe</label>
+          <div className="auth-input-wrapper">
+            <input
+              id="rf-password"
+              className="auth-input auth-input-with-icon"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Minimum 8 caractÃ¨res"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+              disabled={loading}
+            />
+            <button
+              type="button"
+              className="auth-input-icon-btn"
+              onClick={() => setShowPassword(p => !p)}
+              tabIndex={-1}
+              aria-label={showPassword ? 'Masquer' : 'Afficher'}
+            >
+              {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
 
-          {/* Indicateur de force */}
+          {/* Strength bar */}
           {password.length > 0 && (
-            <div className="password-strength">
-              <div className="password-strength-bar">
-                {[0, 1, 2, 3, 4].map(i => (
-                  <div
-                    key={i}
-                    className={`password-strength-segment ${
-                      i < passwordStrength
-                        ? passwordStrength <= 2 ? 'weak'
-                        : passwordStrength <= 3 ? 'fair'
-                        : 'strong'
-                        : ''
-                    }`}
-                  />
-                ))}
+            <>
+              <div className="auth-password-strength" style={{ marginTop: 8 }}>
+                <div className={`auth-password-strength-fill ${strengthLabel}`} />
               </div>
-              <ul className="password-rules">
-                {passwordRuleStatus.map((rule, i) => (
-                  <li key={i} className={rule.ok ? 'rule-ok' : 'rule-fail'}>
-                    {rule.ok ? '✓' : '✗'} {rule.label}
+              {/* Rules checklist */}
+              <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+                {ruleStatus.map((r, i) => (
+                  <li key={i} style={{ fontSize: 11, color: r.ok ? 'var(--auth-success)' : 'var(--auth-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {r.ok ? 'âœ“' : 'â—‹'} {r.label}
                   </li>
                 ))}
               </ul>
-            </div>
+            </>
           )}
         </div>
 
-        <div className="form-group">
-          <label className="form-label" htmlFor="reg-confirm">Confirmer le mot de passe</label>
-          <input
-            id="reg-confirm"
-            type="password"
-            className="form-input"
-            placeholder="Répétez le mot de passe"
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-            autoComplete="new-password"
-            required
-            disabled={loading}
-          />
-          {confirmPassword.length > 0 && confirmPassword !== password && (
-            <p className="form-hint form-hint-error">Les mots de passe ne correspondent pas.</p>
-          )}
-        </div>
-
-        {(error || fieldErrors.length > 0) && (
-          <div className="form-error" role="alert">
-            <span className="form-error-icon">⚠</span> {error}
-            {fieldErrors.length > 0 && (
-              <ul className="form-error-list">
-                {fieldErrors.map((e, i) => <li key={i}>{e}</li>)}
-              </ul>
-            )}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          className="btn-primary"
-          disabled={loading || passwordStrength < 5 || password !== confirmPassword}
-        >
-          {loading ? 'Création…' : 'Créer mon compte'}
-        </button>
-      </form>
-
-      <p className="auth-footer">
-        Déjà un compte ?{' '}
-        <button className="form-link" onClick={onGoLogin}>Se connecter</button>
-      </p>
-    </div>
-  );
-};
+        {/* Confirm */}
+        <div className="auth-input-group">
+          <label className="auth-input-label" htmlFor="rf-confirm">Confirmer le mot de passe</label>
+          <div className="auth-input-wrapper">
+            <input
+              id="rf-confirm"
+              className={`auth-input auth-input-with-icon${pwMismatch ? ' error' : ''}`}
+              type={showConfirm ? 'text' : 'password'}
+              placeholder="RÃ©pÃ©tez le mot de passe"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+              disabled={loading}
+            />
+            <button
+              type="button"
+              className="auth-input-icon-btn"
+              onClick={() => setShowConfirm(p => !p)}
+              tabIndex={-1}
