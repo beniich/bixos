@@ -107,6 +107,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   Documentation
                 </button>
               </li>
+              <li>
+                <button onClick={() => onNavigate('wp_plugin')} className="hover:text-[#f472b6] text-[#f472b6] font-bold transition-colors cursor-pointer flex items-center gap-1">
+                  <span>🔌 Plugin WordPress (.ZIP)</span>
+                </button>
+              </li>
             </ul>
           </div>
 

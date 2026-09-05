@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useLanguageContext } from '../../context/LanguageContext';
 import { BizosLogo } from '../common/BizosLogo';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface SpaceflowHeaderProps {
   currentPage: PageId;
@@ -155,8 +156,37 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
                   onClick={() => { setCurrentPage('wp_plugin'); setSolutionsOpen(false); }}
                   className="w-full text-left px-3 py-2 rounded-xl bg-gradient-to-r from-[#d946ef]/30 to-[#f472b6]/20 border border-[#f472b6]/40 hover:border-[#f472b6] transition-all flex items-center justify-between text-xs text-white group font-bold shadow-sm"
                 >
-                  <span className="text-white group-hover:text-[#f472b6]">🔌 Plugin WordPress (.ZIP)</span>
+                  <span className="text-white group-hover:text-[#f472b6]">🔌 Plugin WP (BizOS)</span>
                   <span className="text-[10px] bg-[#f472b6] text-black px-2 py-0.5 rounded-full font-mono font-black animate-pulse">v2.1.0</span>
+                </button>
+
+                <button
+                  onClick={() => { setCurrentPage('ecoasset_plugin'); setSolutionsOpen(false); }}
+                  className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 border border-blue-500/40 hover:border-blue-400 transition-all flex items-center justify-between text-xs text-white group font-bold shadow-sm"
+                >
+                  <span className="text-white group-hover:text-blue-400">🎟️ Plugin WP (EcoAsset)</span>
+                  <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-mono font-black">NEW</span>
+                </button>
+
+                <button
+                  onClick={() => { setCurrentPage('venue_management'); setSolutionsOpen(false); }}
+                  className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-2 text-xs text-white group"
+                >
+                  🏟️ Gestion Stades & Opéras
+                </button>
+                <button
+                  onClick={() => { setCurrentPage('stadium_management'); setSolutionsOpen(false); }}
+                  className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-2 text-xs text-white group"
+                >
+                  🏗️ Builder de Stades (DB)
+                </button>
+
+                <button
+                  onClick={() => { setCurrentPage('arena_esport'); setSolutionsOpen(false); }}
+                  className="w-full text-left px-3 py-2 mt-1 rounded-xl bg-gradient-to-r from-cyan-600/30 to-teal-600/30 border border-cyan-500/40 hover:border-cyan-300 transition-all flex items-center justify-between text-xs text-white group font-bold shadow-sm"
+                >
+                  <span className="text-white group-hover:text-cyan-300">🎮 Plan Arène eSport</span>
+                  <span className="text-[10px] bg-cyan-500 text-black px-2 py-0.5 rounded-full font-mono font-black animate-pulse">LIVE</span>
                 </button>
               </div>
             )}
@@ -183,6 +213,8 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
 
         {/* Header Right Actions matching exact screenshot: Connexion (Pill glass) & Démarrer gratuitement (glowing pink pill button) */}
         <div className="flex items-center gap-3">
+          <PWAInstallButton />
+          
           {/* Language Switcher (EN Default / FR Second) */}
           <div className="flex items-center gap-1 p-1 rounded-full bg-white/5 border border-white/20 text-xs text-white">
             <Globe className="w-3.5 h-3.5 text-[#f472b6] ml-1.5 mr-0.5" />

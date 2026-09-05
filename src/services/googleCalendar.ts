@@ -84,6 +84,12 @@ export const googleCalendarService = {
       if (!res.ok) {
         throw new Error('Impossible de charger les événements Google Calendar');
       }
+      
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('API returned non-JSON response');
+      }
+      
       const data = await res.json();
       return data.events || data;
     } catch (err) {

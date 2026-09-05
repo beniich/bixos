@@ -1,4 +1,4 @@
-import { ApiError } from './authApi'
+import { ApiError } from '../lib/api-client'
 import type {
   Venue,
   VenueLayout,

@@ -97,9 +97,15 @@ export class ApiError extends Error {
   status: number;
   data: any;
   
-  constructor(response: Response) {
-    super(`HTTP ${response.status}`);
-    this.status = response.status;
+  constructor(responseOrMessage: Response | string, status?: number, data?: any) {
+    if (typeof responseOrMessage === 'string') {
+      super(responseOrMessage);
+      this.status = status ?? 500;
+      this.data = data;
+    } else {
+      super(`HTTP ${responseOrMessage.status}`);
+      this.status = responseOrMessage.status;
+    }
     this.name = 'ApiError';
   }
 }

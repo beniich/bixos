@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import '../../styles/auth.css';
@@ -194,3 +194,36 @@ export const RegisterForm: React.FC<Props> = ({ onSuccess, onGoLogin }) => {
               className="auth-input-icon-btn"
               onClick={() => setShowConfirm(p => !p)}
               tabIndex={-1}
+            >
+              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          {pwMismatch && (
+            <span className="auth-input-error">Les mots de passe ne correspondent pas</span>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className="auth-button-primary"
+          disabled={!canSubmit}
+          style={{ marginTop: 8 }}
+        >
+          {loading ? <span className="auth-spinner" /> : null}
+          {loading ? 'Création en cours...' : 'Créer mon compte'}
+          {!loading && <span className="auth-button-arrow">→</span>}
+        </button>
+      </form>
+
+      {onGoLogin && (
+        <div className="auth-text-center">
+          Déjà un compte ?{' '}
+          <button type="button" className="auth-link" onClick={onGoLogin}>
+            Se connecter
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+

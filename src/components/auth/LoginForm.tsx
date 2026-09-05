@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/auth.css';
@@ -125,7 +125,11 @@ export function LoginForm({ onSuccess, onGoRegister, redirectReason }: LoginForm
         <div className="auth-text-center">
           Pas encore de compte ?{' '}
           <button type="button" className="auth-link" onClick={onGoRegister}>
-            DÃ©marrer un essai gratuit
+            Démarrer un essai gratuit
           </button>
         </div>
       )}
+    </div>
+  );
+};
+

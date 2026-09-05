@@ -2,8 +2,15 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { apiClient } from '../lib/api-client';
 import { getDeviceId } from '../lib/device-id';
 
-export interface User {
+export interface OrgInfo {
   id: string;
+  name: string;
+  role: string;
+}
+
+export interface User {
+  id?: string;
+  uid?: string;
   email: string;
   displayName: string;
   role: string;
@@ -14,7 +21,7 @@ export interface User {
   photoURL?: string;
   phone?: string | null;
   permissions?: string[];
-  allowedOrganizations?: any[];
+  allowedOrganizations?: OrgInfo[];
   subscriptionStatus?: string;
   plan?: string;
   planExpiresAt?: number | null;
@@ -23,9 +30,11 @@ export interface User {
   seatsUsed?: number;
   isActive?: boolean;
   isSuspended?: boolean;
-  createdAt?: number;
-  lastLoginAt?: number;
+  createdAt?: number | string;
+  lastLoginAt?: number | string;
 }
+
+export type UserProfile = User;
 
 interface Subscription {
   status: string;
@@ -52,11 +61,16 @@ interface AuthContextValue {
   // Auth methods
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   signInWithGithub: () => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resendVerification: (email?: string) => Promise<void>;
+
+  switchOrganization: (orgId: string, orgName: string) => Promise<void>;
+  createOrganization: (orgName: string) => Promise<string>;
+  updateRole: (role: any) => Promise<void>;
 
   hasPermission: (resource: string, action: 'create' | 'read' | 'update' | 'delete') => boolean;
 }
@@ -161,6 +175,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user]
   );
 
+  const switchOrganization = useCallback(async (orgId: string, orgName: string) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const targetOrg = prev.allowedOrganizations?.find((o) => o.id === orgId);
+      return {
+        ...prev,
+        organizationId: orgId,
+        organizationName: orgName,
+        role: targetOrg ? targetOrg.role : prev.role,
+      };
+    });
+  }, []);
+
+  const createOrganization = useCallback(async (orgName: string): Promise<string> => {
+    const orgId = `org_${Date.now()}`;
+    const newOrg: OrgInfo = { id: orgId, name: orgName, role: 'Admin' };
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        organizationId: orgId,
+        organizationName: orgName,
+        allowedOrganizations: [...(prev.allowedOrganizations || []), newOrg],
+      };
+    });
+    return orgId;
+  }, []);
+
+  const updateRole = useCallback(async (role: any) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        role: typeof role === 'string' ? role : prev.role,
+      };
+    });
+  }, []);
+
   const value: AuthContextValue = {
     user,
     profile: user, // backward compat
@@ -177,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     signIn: login,
     signInWithGoogle,
+    loginWithGoogle: signInWithGoogle,
     signInWithGithub,
     signUp,
     logout,
@@ -185,6 +238,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     forgotPassword,
     resendVerification,
+    switchOrganization,
+    createOrganization,
+    updateRole,
     hasPermission,
   };
 

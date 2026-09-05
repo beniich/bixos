@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth, User } from '../../context/AuthContext';
-import { UserRole } from '../../types/database';
+import { useAuth, UserProfile, OrgInfo } from '../../context/AuthContext';
 import { 
   Users, ShieldCheck, Building2, UserPlus, Key, RefreshCw, CheckCircle2, 
   AlertTriangle, Lock, Unlock, Layers, ShieldAlert, Sparkles, Filter, 
@@ -14,12 +13,9 @@ interface MultiUserAdminManagerProps {
 }
 
 export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ isDarkMode = true }) => {
-  const { profile } = useAuth();
-  const switchOrganization = async (_orgId: string, _orgName?: string) => {};
-  const createOrganization = async (_name: string): Promise<string> => 'new_org';
-  const updateRole = async (_userId: string, _role: string) => {};
+  const { profile, switchOrganization, createOrganization, updateRole } = useAuth();
   
-  const [usersList, setUsersList] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(false);
   const [activeOrgId, setActiveOrgId] = useState<string>(profile?.organizationId || 'org_bizos_global');
 
@@ -32,7 +28,7 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
   const [showInviteModal, setShowInviteModal] = useState<boolean>(false);
   const [inviteEmail, setInviteEmail] = useState<string>('');
   const [inviteName, setInviteName] = useState<string>('');
-  const [inviteRole, setInviteRole] = useState<UserRole>('COLLABORATOR');
+  const [inviteRole, setInviteRole] = useState<'Admin' | 'Collaborateur' | 'Technicien'>('Collaborateur');
 
   // Notification / Toast
   const [notification, setNotification] = useState<string>('');
@@ -46,9 +42,9 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
     const unsub = onSnapshot(
       collection(db, 'users'),
       (snapshot) => {
-        const list: User[] = [];
+        const list: UserProfile[] = [];
         snapshot.forEach((docSnap) => {
-          const data = docSnap.data() as User;
+          const data = docSnap.data() as UserProfile;
           // Filter by active organization ID for isolation
           if (!data.organizationId || data.organizationId === activeOrgId || data.organizationId === 'org_bizos_global') {
             list.push(data);
@@ -57,8 +53,53 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
 
         // Seed mock users if Firestore collection is fresh
         if (list.length === 0) {
-          // Empty list — users will come from Firestore only (no mock in production)
-          setUsersList([]);
+          const seededUsers: UserProfile[] = [
+            {
+              id: 'user_admin_01',
+              uid: 'user_admin_01',
+              email: 'admin.global@bizos-gmao.com',
+              displayName: 'Alexandre Meyer (Admin Principal)',
+              photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+              role: 'Admin',
+              organizationId: activeOrgId,
+              organizationName: currentOrgName,
+              allowedOrganizations: profile?.allowedOrganizations || [],
+            },
+            {
+              id: 'user_admin_02',
+              uid: 'user_admin_02',
+              email: 'co.admin@facility-corp.fr',
+              displayName: 'Claire Dubois (Co-Admin)',
+              photoURL: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
+              role: 'Admin',
+              organizationId: activeOrgId,
+              organizationName: currentOrgName,
+              allowedOrganizations: profile?.allowedOrganizations || [],
+            },
+            {
+              id: 'user_collab_01',
+              uid: 'user_collab_01',
+              email: 'm.laurent@bizos.io',
+              displayName: 'Marc Laurent (Collaborateur)',
+              photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+              role: 'Collaborateur',
+              organizationId: activeOrgId,
+              organizationName: currentOrgName,
+              allowedOrganizations: [],
+            },
+            {
+              id: 'user_tech_01',
+              uid: 'user_tech_01',
+              email: 'a.mercier@fieldtech.org',
+              displayName: 'Antoine Mercier (FieldTech #402)',
+              photoURL: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+              role: 'Technicien',
+              organizationId: activeOrgId,
+              organizationName: currentOrgName,
+              allowedOrganizations: [],
+            }
+          ];
+          setUsersList(seededUsers);
         } else {
           setUsersList(list);
         }
@@ -104,29 +145,18 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
     e.preventDefault();
     if (!inviteEmail || !inviteName) return;
 
-    const now = Date.now();
-    const newUid = `user_inv_${now}`;
-    const newUser: User = {
+    const newUid = `user_inv_${Date.now()}`;
+    const newUser: UserProfile = {
       id: newUid,
+      uid: newUid,
       email: inviteEmail,
       displayName: inviteName,
       photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(inviteName)}`,
-      phone: null,
       role: inviteRole,
-      permissions: [],
       organizationId: activeOrgId,
       organizationName: currentOrgName,
       allowedOrganizations: [{ id: activeOrgId, name: currentOrgName, role: inviteRole }],
-      subscriptionStatus: 'trial',
-      plan: 'trial',
-      planExpiresAt: null,
-      trialEndsAt: now + 14 * 24 * 60 * 60 * 1000,
-      seatsIncluded: 5,
-      seatsUsed: 0,
-      isActive: true,
-      isSuspended: false,
-      createdAt: now,
-      lastLoginAt: now,
+      createdAt: new Date().toISOString()
     };
 
     try {
@@ -146,7 +176,7 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
     }
   };
 
-  const handleChangeUserRole = async (targetUid: string, newRole: UserRole) => {
+  const handleChangeUserRole = async (targetUid: string, newRole: 'Admin' | 'Collaborateur' | 'Technicien') => {
     try {
       await updateDoc(doc(db, 'users', targetUid), { role: newRole });
       setNotification(`Role updated successfully: ${newRole}`);
@@ -297,7 +327,7 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
                   <div>
                     <div className="font-extrabold text-sm flex items-center gap-2">
                       <span>{usr.displayName || 'Anonymous User'}</span>
-                      {['SUPER_ADMIN','ORG_MANAGER','SITE_ADMIN'].includes(usr.role) && (
+                      {usr.role === 'Admin' && (
                         <span className="px-2 py-0.5 rounded bg-purple-500/30 text-purple-200 border border-purple-500/50 text-[10px] font-mono font-extrabold flex items-center gap-1">
                           <ShieldCheck className="w-3 h-3 text-[#f472b6]" /> ADMIN
                         </span>
@@ -315,15 +345,12 @@ export const MultiUserAdminManager: React.FC<MultiUserAdminManagerProps> = ({ is
                   <span className="text-xs text-slate-400 font-mono sm:hidden">Role:</span>
                   <select
                     value={usr.role}
-                    onChange={(e) => handleChangeUserRole(usr.uid, e.target.value as UserRole)}
+                    onChange={(e) => handleChangeUserRole(usr.uid, e.target.value as any)}
                     className="bg-[#0b0416] border border-white/20 rounded-xl px-3 py-1.5 text-xs font-bold text-purple-200 focus:outline-none focus:border-[#d946ef] cursor-pointer"
                   >
-                    <option value="SUPER_ADMIN">Super Admin (Full Control)</option>
-                    <option value="SITE_ADMIN">Site Admin</option>
-                    <option value="CAFM_MANAGER">CAFM Manager</option>
-                    <option value="COLLABORATOR">Collaborator</option>
-                    <option value="TECHNICIAN">Technician</option>
-                    <option value="AUDITOR">Auditor</option>
+                    <option value="Admin">Admin (Full Control)</option>
+                    <option value="Collaborateur">Collaborator (Site Management)</option>
+                    <option value="Technicien">Technician (Field & WO)</option>
                   </select>
                 </div>
               </div>

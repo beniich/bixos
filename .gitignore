@@ -24,3 +24,6 @@ secrets/
 .credentials/
 credentials.json
 config/local.json
+.gradle/
+*.gradle
+
