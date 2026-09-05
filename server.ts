@@ -44,12 +44,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://js.stripe.com', 'https://www.googletagmanager.com'],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://js.stripe.com', 'https://www.googletagmanager.com', 'https://www.paypal.com', 'https://*.paypal.com', 'https://*.paypalobjects.com'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'https://images.unsplash.com', 'https://lh3.googleusercontent.com'],
-        connectSrc: ["'self'", 'https://api.stripe.com', 'wss:', 'ws:'],
-        frameSrc: ["'none'"],
+        imgSrc: ["'self'", 'data:', 'https://images.unsplash.com', 'https://lh3.googleusercontent.com', 'https://*.paypalobjects.com'],
+        connectSrc: ["'self'", 'https://api.stripe.com', 'https://*.paypal.com', 'wss:', 'ws:'],
+        frameSrc: ["'self'", 'https://js.stripe.com', 'https://*.paypal.com'],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
       },
