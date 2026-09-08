@@ -52,6 +52,9 @@ interface AuthContextValue {
   isOrganizer: boolean;
   needsVerification: boolean;
   profile: any; // backward compat
+  isFreePlan: boolean;
+  isProPlan: boolean;
+  isEnterprisePlan: boolean;
 
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -213,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const currentPlan = (subscription?.plan || user?.plan || 'FREE').toUpperCase();
+
   const value: AuthContextValue = {
     user,
     profile: user, // backward compat
@@ -225,6 +230,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: user ? ['SUPER_ADMIN', 'ORG_MANAGER', 'SITE_ADMIN'].includes(user.role) : false,
     isOrganizer: user ? ['ORGANIZER', 'EVENT_MANAGER', 'SUPER_ADMIN'].includes(user.role) : false,
     needsVerification,
+    isFreePlan: currentPlan === 'FREE',
+    isProPlan: currentPlan === 'PRO',
+    isEnterprisePlan: currentPlan === 'ENTERPRISE' || user?.role === 'SUPER_ADMIN',
 
     login,
     signIn: login,

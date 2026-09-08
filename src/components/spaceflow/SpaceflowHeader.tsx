@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { GoogleAuthUser, PageId, Language } from '../../types';
 import { 
-  ChevronDown, Moon, Sun, LogIn, Mail, Sparkles, Shield, Cpu, Zap, Globe
+  ChevronDown, Moon, Sun, LogIn, Mail, Sparkles, Shield, Cpu, Zap, Globe, Lock
 } from 'lucide-react';
 import { useLanguageContext } from '../../context/LanguageContext';
 import { BizosLogo } from '../common/BizosLogo';
 import { PWAInstallButton } from '../common/PWAInstallButton';
+import { usePlanGate, FeatureKey } from '../../hooks/usePlanGate';
 
 interface SpaceflowHeaderProps {
   currentPage: PageId;
@@ -31,6 +32,16 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
 }) => {
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const { language, setLanguage, t } = useLanguageContext();
+  const { canAccess, plan } = usePlanGate();
+
+  const handleNavClick = (page: PageId, feature?: FeatureKey) => {
+    if (feature && !canAccess(feature)) {
+      setCurrentPage('pricing');
+    } else {
+      setCurrentPage(page);
+    }
+    setSolutionsOpen(false);
+  };
 
   return (
     <header className="sticky top-4 z-50 max-w-7xl mx-auto px-4 sm:px-6">
@@ -49,7 +60,7 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-5 text-sm font-medium text-[#d1d5db]">
           <button
-            onClick={() => setCurrentPage('dashboard')}
+            onClick={() => handleNavClick('dashboard', 'overview')}
             className={`transition-colors cursor-pointer hover:text-white ${
               currentPage === 'dashboard' ? 'text-[#f472b6] font-semibold drop-shadow-[0_0_8px_rgba(244,114,182,0.5)]' : 'text-[#e5e7eb]'
             }`}
@@ -58,7 +69,7 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
           </button>
 
           <button
-            onClick={() => setCurrentPage('members')}
+            onClick={() => handleNavClick('members', 'eam')}
             className={`transition-colors cursor-pointer hover:text-white flex items-center gap-1 ${
               currentPage === 'members' ? 'text-[#f472b6] font-semibold drop-shadow-[0_0_8px_rgba(244,114,182,0.5)]' : 'text-[#e5e7eb]'
             }`}
@@ -67,7 +78,7 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
           </button>
 
           <button
-            onClick={() => setCurrentPage('bookings')}
+            onClick={() => handleNavClick('bookings', 'cmms')}
             className={`transition-colors cursor-pointer hover:text-white flex items-center gap-1 ${
               currentPage === 'bookings' ? 'text-[#f472b6] font-semibold drop-shadow-[0_0_8px_rgba(244,114,182,0.5)]' : 'text-[#e5e7eb]'
             }`}
@@ -89,15 +100,15 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
             {solutionsOpen && (
               <div className="absolute top-full left-0 mt-2 w-64 rounded-2xl bg-[#140826]/95 backdrop-blur-xl border border-[#d946ef]/40 p-2 shadow-[0_10px_30px_rgba(0,0,0,0.8),0_0_20px_rgba(217,70,239,0.2)] z-50 animate-fade-in space-y-1">
                 <button
-                  onClick={() => { setCurrentPage('cafm_gmao'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('cafm_gmao', 'cmms')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/20 transition-colors flex items-center justify-between text-xs text-white group"
                 >
-                  <span className="font-semibold text-[#f472b6] group-hover:text-white">CAFM Dashboard</span>
+                  <span className="font-semibold text-[#f472b6] group-hover:text-white flex items-center gap-1">CAFM Dashboard {!canAccess('cmms') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-[#d946ef]/30 text-white px-2 py-0.5 rounded-full font-mono">GMAO</span>
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('admin_super'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('admin_super')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/20 transition-colors flex items-center justify-between text-xs text-white group"
                 >
                   <span className="font-semibold text-[#f472b6] group-hover:text-white">Super Admin Hub</span>
@@ -105,89 +116,93 @@ export const SpaceflowHeader: React.FC<SpaceflowHeaderProps> = ({
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('today'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('today', 'overview')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/20 transition-colors flex items-center justify-between text-xs text-white group"
                 >
-                  <span className="font-semibold text-[#f472b6] group-hover:text-white">{t('navToday')}</span>
+                  <span className="font-semibold text-[#f472b6] group-hover:text-white flex items-center gap-1">{t('navToday')} {!canAccess('overview') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-[#d946ef]/30 text-white px-2 py-0.5 rounded-full font-mono">Realtime</span>
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('analytics'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('analytics', 'predictive')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/20 transition-colors flex items-center justify-between text-xs text-white group"
                 >
-                  <span className="font-semibold text-[#f472b6] group-hover:text-white">{t('navAiPredictions')}</span>
+                  <span className="font-semibold text-[#f472b6] group-hover:text-white flex items-center gap-1">{t('navAiPredictions')} {!canAccess('predictive') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-[#d946ef]/30 text-white px-2 py-0.5 rounded-full font-mono">Gemini 2.5</span>
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('mobile_pwa'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('mobile_pwa', 'eam')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/20 transition-colors flex items-center justify-between text-xs text-white group"
                 >
-                  <span className="font-semibold text-[#f472b6] group-hover:text-white">{t('navMobilePwa')}</span>
+                  <span className="font-semibold text-[#f472b6] group-hover:text-white flex items-center gap-1">{t('navMobilePwa')} {!canAccess('eam') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-[#d946ef]/30 text-white px-2 py-0.5 rounded-full font-mono">Offline</span>
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('visitors'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('visitors', 'spaces')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/20 transition-colors flex items-center justify-between text-xs text-white group"
                 >
-                  <span className="font-semibold text-[#f472b6] group-hover:text-white">{t('navTelemetry')}</span>
+                  <span className="font-semibold text-[#f472b6] group-hover:text-white flex items-center gap-1">{t('navTelemetry')} {!canAccess('spaces') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-[#03b5d3]/30 text-[#03b5d3] px-2 py-0.5 rounded-full font-mono">MQTT</span>
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('licenses'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('licenses', 'settings')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/15 transition-colors flex items-center justify-between text-xs text-[#e5e7eb]"
                 >
-                  <span>{t('navLicenses')}</span>
+                  <span className="flex items-center gap-1">{t('navLicenses')} {!canAccess('settings') && <Lock size={12} className="text-gray-400" />}</span>
                   <Sparkles className="w-3.5 h-3.5 text-[#f472b6]" />
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('schema'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('schema', 'settings')}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#d946ef]/15 transition-colors flex items-center justify-between text-xs text-[#e5e7eb]"
                 >
-                  <span>{t('navSchema')}</span>
+                  <span className="flex items-center gap-1">{t('navSchema')} {!canAccess('settings') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-white/10 text-slate-300 px-2 py-0.5 rounded-full font-mono">Nexus</span>
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('wp_plugin'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('wp_plugin', 'saas_offers')}
                   className="w-full text-left px-3 py-2 rounded-xl bg-gradient-to-r from-[#d946ef]/30 to-[#f472b6]/20 border border-[#f472b6]/40 hover:border-[#f472b6] transition-all flex items-center justify-between text-xs text-white group font-bold shadow-sm"
                 >
-                  <span className="text-white group-hover:text-[#f472b6]">🔌 Plugin WP (BizOS)</span>
+                  <span className="text-white group-hover:text-[#f472b6] flex items-center gap-1">🔌 Plugin WP (BizOS) {!canAccess('saas_offers') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-[#f472b6] text-black px-2 py-0.5 rounded-full font-mono font-black animate-pulse">v2.1.0</span>
                 </button>
 
                 <button
-                  onClick={() => { setCurrentPage('ecoasset_plugin'); setSolutionsOpen(false); }}
+                  onClick={() => handleNavClick('ecoasset_plugin', 'saas_offers')}
                   className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-gradient-to-r from-blue-600/30 to-indigo-600/30 border border-blue-500/40 hover:border-blue-400 transition-all flex items-center justify-between text-xs text-white group font-bold shadow-sm"
                 >
-                  <span className="text-white group-hover:text-blue-400">🎟️ Plugin WP (EcoAsset)</span>
+                  <span className="text-white group-hover:text-blue-400 flex items-center gap-1">🎟️ Plugin WP (EcoAsset) {!canAccess('saas_offers') && <Lock size={12} className="text-gray-400" />}</span>
                   <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-mono font-black">NEW</span>
                 </button>
 
-                <button
-                  onClick={() => { setCurrentPage('venue_management'); setSolutionsOpen(false); }}
-                  className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-2 text-xs text-white group"
-                >
-                  🏟️ Gestion Stades & Opéras
-                </button>
-                <button
-                  onClick={() => { setCurrentPage('stadium_management'); setSolutionsOpen(false); }}
-                  className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-2 text-xs text-white group"
-                >
-                  🏗️ Builder de Stades (DB)
-                </button>
+                {plan !== 'FREE' && (
+                  <>
+                    <button
+                      onClick={() => handleNavClick('venue_management', 'digital_twin')}
+                      className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-2 text-xs text-white group"
+                    >
+                      🏟️ Gestion Stades & Opéras {!canAccess('digital_twin') && <Lock size={12} className="text-gray-400" />}
+                    </button>
+                    <button
+                      onClick={() => handleNavClick('stadium_management', 'digital_twin')}
+                      className="w-full text-left px-3 py-2 mt-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-2 text-xs text-white group"
+                    >
+                      🏗️ Builder de Stades (DB) {!canAccess('digital_twin') && <Lock size={12} className="text-gray-400" />}
+                    </button>
 
-                <button
-                  onClick={() => { setCurrentPage('arena_esport'); setSolutionsOpen(false); }}
-                  className="w-full text-left px-3 py-2 mt-1 rounded-xl bg-gradient-to-r from-cyan-600/30 to-teal-600/30 border border-cyan-500/40 hover:border-cyan-300 transition-all flex items-center justify-between text-xs text-white group font-bold shadow-sm"
-                >
-                  <span className="text-white group-hover:text-cyan-300">🎮 Plan Arène eSport</span>
-                  <span className="text-[10px] bg-cyan-500 text-black px-2 py-0.5 rounded-full font-mono font-black animate-pulse">LIVE</span>
-                </button>
+                    <button
+                      onClick={() => handleNavClick('arena_esport', 'digital_twin')}
+                      className="w-full text-left px-3 py-2 mt-1 rounded-xl bg-gradient-to-r from-cyan-600/30 to-teal-600/30 border border-cyan-500/40 hover:border-cyan-300 transition-all flex items-center justify-between text-xs text-white group font-bold shadow-sm"
+                    >
+                      <span className="text-white group-hover:text-cyan-300 flex items-center gap-1">🎮 Plan Arène eSport {!canAccess('digital_twin') && <Lock size={12} className="text-gray-400" />}</span>
+                      <span className="text-[10px] bg-cyan-500 text-black px-2 py-0.5 rounded-full font-mono font-black animate-pulse">LIVE</span>
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>

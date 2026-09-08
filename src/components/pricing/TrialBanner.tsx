@@ -1,8 +1,10 @@
 import React from 'react';
-import { Clock, AlertTriangle, CreditCard } from 'lucide-react';
+import { Clock, AlertTriangle, CreditCard, Sparkles } from 'lucide-react';
 import { PageId } from '../../types';
+import { usePlanGate } from '../../hooks/usePlanGate';
 
 export function TrialBanner({ onNavigate, trialEndsAt, subscriptionStatus, planExpiresAt }: any) {
+  const { plan } = usePlanGate();
   if (subscriptionStatus === 'active') {
     if (planExpiresAt && (planExpiresAt - Date.now()) <= 7 * 24 * 60 * 60 * 1000) {
       return (
@@ -61,6 +63,25 @@ export function TrialBanner({ onNavigate, trialEndsAt, subscriptionStatus, planE
             className="px-4 py-1.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-violet-500/25 transition-all"
           >
             Choisir un plan
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (plan === 'FREE') {
+    return (
+      <div className="bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border-b border-blue-500/30 px-4 py-3 text-center backdrop-blur-md relative z-50">
+        <div className="flex items-center justify-center gap-3 text-blue-200">
+          <Sparkles className="w-5 h-5" />
+          <p className="text-sm font-medium">
+            🆓 Vous utilisez le plan Free — Passez à PRO pour débloquer toutes les fonctionnalités
+          </p>
+          <button 
+            onClick={() => onNavigate('pricing' as PageId)} 
+            className="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-blue-500/25 transition-all"
+          >
+            Mettre à niveau
           </button>
         </div>
       </div>

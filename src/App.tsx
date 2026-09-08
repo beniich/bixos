@@ -92,9 +92,19 @@ function AppContent() {
 
   const handleNavigate = (page: PageId, params?: Record<string, any>) => {
     if (params?.claimId) setTechClaimId(params.claimId);
-    setActivePage(page);
+    setActivePage(page as PageId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Écoute l'event dispatché par PlanGate quand pas de prop onNavigate
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const page = (e as CustomEvent).detail?.page;
+      if (page) handleNavigate(page as PageId);
+    };
+    window.addEventListener('bizos:navigate', handler);
+    return () => window.removeEventListener('bizos:navigate', handler);
+  }, []);
 
   const handleGoogleAuthSuccess = (googleUser: GoogleAuthUser) => {
     // Le AuthContext mettra à jour user/profile automatiquement.

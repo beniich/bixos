@@ -12,6 +12,7 @@ import { RealtimeCentralDashboard } from './RealtimeCentralDashboard';
 import { AndroidDeveloperHub } from './AndroidDeveloperHub';
 import { MultiUserAdminManager } from './MultiUserAdminManager';
 import { GmailIntegrationHub } from './GmailIntegrationHub';
+import { PlanGate } from '../PlanGate';
 
 interface ManagerDashboardViewProps {
   onNavigate?: (page: PageId) => void;
@@ -189,12 +190,13 @@ export const ManagerDashboardView: React.FC<ManagerDashboardViewProps> = ({ onNa
       </div>
 
       {/* Render Active Module */}
-      {activeTab === 'realtime' && <RealtimeCentralDashboard />}
-      {activeTab === 'gmail' && <GmailIntegrationHub />}
-      {activeTab === 'multiuser' && <MultiUserAdminManager />}
-      {activeTab === 'map' && <GlobalOperationsMapDashboard />}
-      {activeTab === 'android' && <AndroidDeveloperHub />}
+      {activeTab === 'realtime' && <PlanGate feature="digital_twin"><RealtimeCentralDashboard /></PlanGate>}
+      {activeTab === 'gmail' && <PlanGate feature="settings"><GmailIntegrationHub /></PlanGate>}
+      {activeTab === 'multiuser' && <PlanGate feature="settings"><MultiUserAdminManager /></PlanGate>}
+      {activeTab === 'map' && <PlanGate feature="overview"><GlobalOperationsMapDashboard /></PlanGate>}
+      {activeTab === 'android' && <PlanGate feature="digital_twin"><AndroidDeveloperHub /></PlanGate>}
       {activeTab === 'overview' && (
+        <PlanGate feature="overview">
         <div className="space-y-6 animate-fade-in">
           
           {/* Executive KPI Cards */}
@@ -301,12 +303,13 @@ export const ManagerDashboardView: React.FC<ManagerDashboardViewProps> = ({ onNa
           </div>
 
         </div>
+        </PlanGate>
       )}
 
-      {activeTab === 'bim' && <BimDigitalTwinViewer />}
-      {activeTab === 'energy' && <EnergyEsgCopilot />}
-      {activeTab === 'predictive' && <PredictiveMaintenanceAi />}
-      {activeTab === 'field' && <FieldTechMobileView />}
+      {activeTab === 'bim' && <PlanGate feature="digital_twin"><BimDigitalTwinViewer /></PlanGate>}
+      {activeTab === 'energy' && <PlanGate feature="energy"><EnergyEsgCopilot /></PlanGate>}
+      {activeTab === 'predictive' && <PlanGate feature="predictive"><PredictiveMaintenanceAi /></PlanGate>}
+      {activeTab === 'field' && <PlanGate feature="eam"><FieldTechMobileView /></PlanGate>}
 
     </div>
   );
