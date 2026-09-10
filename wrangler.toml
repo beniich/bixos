@@ -1,6 +1,9 @@
-# wrangler.toml — Cloudflare Pages (hybrid deployment)
-# NE PAS ajouter [site] — incompatible avec Pages
+# wrangler.toml — Worker bixos avec assets statiques (frontend Vite)
+# Déploiement: Frontend statique dans le Worker existant
 
 name = "bixos"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "dist"
+
+# Assets statiques (build Vite → dist/)
+[assets]
+directory = "./dist"
