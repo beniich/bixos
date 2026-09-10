@@ -1,4 +1,7 @@
 // Wrapper fetch avec auto-refresh + CSRF + cookies
+// En production hybride (Cloudflare Pages + Vercel), toutes les requêtes
+// sont préfixées par VITE_API_URL (ex: https://bixos-api.vercel.app)
+const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 
 interface FetchOptions extends RequestInit {
   skipRefresh?: boolean;
@@ -17,13 +20,15 @@ class ApiClient {
     }
     
     // Sinon, fetch un nouveau
-    const res = await fetch('/api/auth/csrf', { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/api/auth/csrf`, { credentials: 'include' });
     const data = await res.json();
     this.csrfToken = data.token;
     return this.csrfToken;
   }
   
   async fetch(url: string, options: FetchOptions = {}): Promise<Response> {
+    // Préfixe API_BASE si l'URL est relative
+    const resolvedUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
     const method = (options.method ?? 'GET').toUpperCase();
     const needsCsrf = !['GET', 'HEAD', 'OPTIONS'].includes(method);
     
@@ -39,7 +44,7 @@ class ApiClient {
       headers['x-csrf-token'] = await this.getCsrfToken();
     }
     
-    const response = await fetch(url, {
+    const response = await fetch(resolvedUrl, {
       ...options,
       headers,
       credentials: 'include',  // ← Envoie cookies
@@ -49,7 +54,7 @@ class ApiClient {
     if (response.status === 401 && !options.skipRefresh && !options.retry) {
       const refreshed = await this.tryRefresh();
       if (refreshed) {
-        return this.fetch(url, { ...options, retry: true });
+        return this.fetch(url, { ...options, retry: true }); // url reste relative, résolu en interne
       }
       // Échec → redirect login
       window.location.href = '/login';
@@ -60,7 +65,7 @@ class ApiClient {
   
   private async tryRefresh(): Promise<boolean> {
     try {
-      const res = await fetch('/api/auth/refresh', {
+      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
       });

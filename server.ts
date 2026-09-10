@@ -60,7 +60,10 @@ app.use(
 );
 
 // 4. CORS (strict whitelist)
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000').split(',');
+const ALLOWED_ORIGINS = (
+  process.env.ALLOWED_ORIGINS ||
+  'http://localhost:5173,http://localhost:3000,https://bixos.pages.dev'
+).split(',').map(o => o.trim()).filter(Boolean);
 app.use(
   cors({
     origin: (origin, callback) => {
