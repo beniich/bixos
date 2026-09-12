@@ -1,9 +1,20 @@
-# wrangler.toml — Worker bixos avec assets statiques (frontend Vite)
-# Déploiement: Frontend statique dans le Worker existant
+# wrangler.toml — Worker bixos avec assets statiques et API Hono
 
 name = "bixos"
-compatibility_date = "2024-01-01"
+main = "dist/server.mjs"
+compatibility_date = "2026-09-10"
+compatibility_flags = ["nodejs_compat"]
+
+# Build Vite + esbuild avant le déploiement
+[build]
+command = "npm run build"
 
 # Assets statiques (build Vite → dist/)
 [assets]
 directory = "./dist"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bixos-db"
+database_id = "94ddc43c-96d8-419d-8ecd-bd28f5e461a1"

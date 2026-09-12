@@ -6,58 +6,22 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
-enum Role {
-  SUPER_ADMIN
-  FACILITY_MANAGER
-  TECHNICIAN
-  CLIENT_VIEWER
-}
 
-enum LicensePlan {
-  FREE
-  PRO
-  ENTERPRISE
-}
 
-enum LicenseStatus {
-  AVAILABLE
-  USED
-  EXPIRED
-  REVOKED
-}
 
-enum AssetCategory {
-  HVAC
-  ELEVATOR
-  ENERGY_GRID
-  SECURITY
-  PLUMBING
-  FIRE_SAFETY
-}
 
-enum AssetStatus {
-  OPERATIONAL
-  WARNING
-  CRITICAL
-  MAINTENANCE
-}
 
-enum WorkOrderPriority {
-  CRITICAL
-  HIGH
-  MEDIUM
-  LOW
-}
 
-enum WorkOrderStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  PENDING_PARTS
-}
+
+
+
+
+
+
+
 
 // 1. ORGANIZATIONS (Clients using CAFM Pro)
 model Organization {
@@ -81,7 +45,7 @@ model User {
   email              String        @unique
   passwordHash       String
   name               String
-  role               Role          @default(FACILITY_MANAGER)
+  role               String @default("FACILITY_MANAGER")
   isSuperAdmin       Boolean       @default(false)
   organizationId     String?
   organization       Organization? @relation(fields: [organizationId], references: [id])
@@ -111,12 +75,12 @@ model User {
 model LicenseKey {
   id             String        @id @default(uuid())
   key            String        @unique // Format: CAFM-PRO-XXXX-XXXX-XXXX-XXXX
-  plan           LicensePlan   @default(PRO)
+  plan           String @default("PRO")
   maxUsers       Int           @default(10)
   maxAssets      Int           @default(500)
   durationDays   Int           @default(365)
   expiresAt      DateTime
-  status         LicenseStatus @default(AVAILABLE)
+  status         String @default("AVAILABLE")
 
   usedByOrgId    String?
   organization   Organization? @relation(fields: [usedByOrgId], references: [id])
@@ -138,10 +102,10 @@ model Asset {
   id              String        @id @default(uuid())
   code            String        @unique // e.g. HVAC-NORTH-01
   name            String
-  category        AssetCategory
+  category        String
   location        String
   floor           String
-  status          AssetStatus   @default(OPERATIONAL)
+  status          String @default("OPERATIONAL")
   healthScore     Int           @default(100)
   temperature     Float?
   powerUsageKw    Float?
@@ -193,8 +157,8 @@ model WorkOrder {
   ticketNumber         String            @unique // e.g. WO-2026-881
   title                String
   description          String
-  priority             WorkOrderPriority @default(MEDIUM)
-  status               WorkOrderStatus   @default(OPEN)
+  priority             String @default("MEDIUM")
+  status               String @default("OPEN")
   location             String
   predictedFailureProb Int               @default(0) // AI probability %
 
@@ -211,11 +175,7 @@ model WorkOrder {
   updatedAt            DateTime          @updatedAt
 }
 
-enum SessionStatus {
-  ACTIVE
-  EXPIRED
-  REVOKED
-}
+
 
 // 8. SESSIONS (Multi-device Auth)
 model Session {
@@ -227,7 +187,7 @@ model Session {
   ipAddress          String?
   geoCountry         String?
   deviceType         String?
-  status             SessionStatus @default(ACTIVE)
+  status             String @default("ACTIVE")
   
   issuedAt           DateTime      @default(now())
   lastUsedAt         DateTime      @default(now())
@@ -261,31 +221,12 @@ model GmailConfig {
 // AUTH SECURITY MODELS
 // ==========================================
 
-enum AuthEventType {
-  REGISTER
-  EMAIL_VERIFIED
-  LOGIN_SUCCESS
-  LOGIN_FAILED
-  LOGOUT
-  SESSION_REVOKED
-  SESSIONS_REVOKED_ALL
-  PASSWORD_RESET_REQUESTED
-  PASSWORD_RESET_COMPLETED
-  PASSWORD_CHANGED
-  TWO_FACTOR_ENABLED
-  TWO_FACTOR_DISABLED
-  TWO_FA_ENABLED
-  TWO_FA_DISABLED
-  BACKUP_CODE_USED
-  ACCOUNT_LOCKED
-  ACCOUNT_UNLOCKED
-  SUSPICIOUS_ACTIVITY
-}
+
 
 // Audit log immutable de tous les événements auth
 model AuthAuditLog {
   id             String        @id @default(uuid())
-  eventType      AuthEventType
+  eventType      String
   userId         String?
   organizationId String?
   email          String?
@@ -392,7 +333,7 @@ model TwoFactorSecret {
   userId              String    @unique
   method              String    @default("TOTP")
   secretEncrypted     String
-  backupCodesHashed   String[]
+  backupCodesHashed   String
   enabledAt           DateTime?
   lastUsedAt          DateTime?
   createdAt           DateTime  @default(now())
