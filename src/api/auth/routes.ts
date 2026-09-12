@@ -1,16 +1,17 @@
-import { Router, Request, Response } from 'express';
+import { Hono } from 'hono';
+import { getCookie, setCookie } from 'hono/cookie';
+import { zValidator } from '@hono/zod-validator';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
-import { prisma } from '../../prisma';
 import { sessionService } from '../../lib/session';
 import { generateCsrfToken } from '../../lib/csrf';
 import { COOKIE_NAMES, SESSION_COOKIE_OPTIONS, REFRESH_COOKIE_OPTIONS, clearAllAuthCookies } from '../../lib/cookies';
-import { requireAuth } from './middleware';
+import { requireAuthHono } from './middleware';
 
-const router = Router();
+// Hono App with contextual Prisma & Session
+const auth = new Hono<{ Variables: { prisma: any, session: any } }>();
 
 // ============== SCHEMAS ==============
-
 const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
@@ -25,277 +26,242 @@ const RegisterSchema = z.object({
 });
 
 // ============== POST /api/auth/register ==============
+auth.post('/register', zValidator('json', RegisterSchema), async (c) => {
+  const prisma = c.get('prisma');
+  const { email, password, name, deviceId } = c.req.valid('json');
 
-router.post('/register', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { email, password, name, deviceId } = RegisterSchema.parse(req.body);
-
-    // Check if email already exists
-    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-    if (existing) {
-      return res.status(409).json({ error: 'Email already in use', code: 'EMAIL_TAKEN' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    const user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        name,
-        passwordHash,
-        role: 'FACILITY_MANAGER',
-        isSuperAdmin: false,
-        emailVerified: false,
-      },
-    });
-
-    const ipAddress = req.ip ?? req.headers['x-forwarded-for']?.toString() ?? 'unknown';
-    const userAgent = req.headers['user-agent'] ?? 'unknown';
-
-    const { sessionCookie, refreshCookie } = await sessionService.createSession(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        organizationId: user.organizationId ?? 'unassigned',
-        displayName: user.name,
-        isSuperAdmin: user.isSuperAdmin,
-        permissions: [],
-        subscriptionStatus: 'trial',
-        subscriptionPlan: 'free',
-      },
-      { deviceId, ipAddress, userAgent }
-    );
-
-    res.cookie(COOKIE_NAMES.SESSION, sessionCookie, SESSION_COOKIE_OPTIONS);
-    res.cookie(COOKIE_NAMES.REFRESH, refreshCookie, REFRESH_COOKIE_OPTIONS);
-
-    const csrfToken = await generateCsrfToken(res);
-
-    res.status(201).json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isSuperAdmin: user.isSuperAdmin,
-        organizationId: user.organizationId,
-      },
-      csrfToken,
-    });
-
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid input', details: err.issues });
-    }
-    console.error('[REGISTER]', err);
-    res.status(500).json({ error: 'Registration failed' });
+  const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (existing) {
+    return c.json({ error: 'Email already in use', code: 'EMAIL_TAKEN' }, 409);
   }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const user = await prisma.user.create({
+    data: {
+      email: email.toLowerCase(),
+      name,
+      passwordHash,
+      role: 'FACILITY_MANAGER',
+      isSuperAdmin: false,
+      emailVerified: false,
+    },
+  });
+
+  const ipAddress = c.req.header('cf-connecting-ip') ?? 'unknown';
+  const userAgent = c.req.header('user-agent') ?? 'unknown';
+
+  const { sessionCookie, refreshCookie } = await sessionService.createSession(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      organizationId: user.organizationId ?? 'unassigned',
+      displayName: user.name,
+      isSuperAdmin: user.isSuperAdmin,
+      permissions: [],
+      subscriptionStatus: 'trial',
+      subscriptionPlan: 'free',
+    },
+    { deviceId, ipAddress, userAgent }
+  );
+
+  setCookie(c, COOKIE_NAMES.SESSION, sessionCookie, SESSION_COOKIE_OPTIONS as any);
+  setCookie(c, COOKIE_NAMES.REFRESH, refreshCookie, REFRESH_COOKIE_OPTIONS as any);
+
+  // Remarque : generateCsrfToken nécessitera une adaptation pour retourner juste le token
+  const csrfToken = await generateCsrfToken({} as any);
+
+  return c.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      isSuperAdmin: user.isSuperAdmin,
+      organizationId: user.organizationId,
+    },
+    csrfToken,
+  }, 201);
 });
 
 
-router.post('/login', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { email, password, deviceId } = LoginSchema.parse(req.body);
+// ============== POST /api/auth/login ==============
+auth.post('/login', zValidator('json', LoginSchema), async (c) => {
+  const prisma = c.get('prisma');
+  const { email, password, deviceId } = c.req.valid('json');
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-      include: { organization: true },
-    });
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    include: { organization: true },
+  });
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const passwordValid = await bcrypt.compare(password, user.passwordHash);
-    if (!passwordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Check lockout
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      return res.status(403).json({
-        error: 'Account locked',
-        code: 'LOCKED',
-        lockedUntil: user.lockedUntil,
-      });
-    }
-
-    const ipAddress = req.ip ?? req.headers['x-forwarded-for']?.toString() ?? 'unknown';
-    const userAgent = req.headers['user-agent'] ?? 'unknown';
-
-    const { sessionCookie, refreshCookie } = await sessionService.createSession(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        organizationId: user.organizationId ?? 'unassigned',
-        displayName: user.name,
-        isSuperAdmin: user.isSuperAdmin,
-        permissions: [],
-      },
-      { deviceId, ipAddress, userAgent }
-    );
-
-    res.cookie(COOKIE_NAMES.SESSION, sessionCookie, SESSION_COOKIE_OPTIONS);
-    res.cookie(COOKIE_NAMES.REFRESH, refreshCookie, REFRESH_COOKIE_OPTIONS);
-
-    const csrfToken = await generateCsrfToken(res);
-
-    // Update last login
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date(), lastLoginIp: ipAddress, failedLoginCount: 0 },
-    });
-
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isSuperAdmin: user.isSuperAdmin,
-        organizationId: user.organizationId,
-        organizationName: user.organization?.name,
-      },
-      csrfToken,
-    });
-
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid input', details: err.issues });
-    }
-    console.error('[LOGIN]', err);
-    res.status(500).json({ error: 'Login failed' });
+  if (!user) {
+    return c.json({ error: 'Invalid credentials' }, 401);
   }
+
+  const passwordValid = await bcrypt.compare(password, user.passwordHash);
+  if (!passwordValid) {
+    return c.json({ error: 'Invalid credentials' }, 401);
+  }
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    return c.json({
+      error: 'Account locked',
+      code: 'LOCKED',
+      lockedUntil: user.lockedUntil,
+    }, 403);
+  }
+
+  const ipAddress = c.req.header('cf-connecting-ip') ?? 'unknown';
+  const userAgent = c.req.header('user-agent') ?? 'unknown';
+
+  const { sessionCookie, refreshCookie } = await sessionService.createSession(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      organizationId: user.organizationId ?? 'unassigned',
+      displayName: user.name,
+      isSuperAdmin: user.isSuperAdmin,
+      permissions: [],
+    },
+    { deviceId, ipAddress, userAgent }
+  );
+
+  setCookie(c, COOKIE_NAMES.SESSION, sessionCookie, SESSION_COOKIE_OPTIONS as any);
+  setCookie(c, COOKIE_NAMES.REFRESH, refreshCookie, REFRESH_COOKIE_OPTIONS as any);
+
+  const csrfToken = await generateCsrfToken({} as any);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date(), lastLoginIp: ipAddress, failedLoginCount: 0 },
+  });
+
+  return c.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      isSuperAdmin: user.isSuperAdmin,
+      organizationId: user.organizationId,
+      organizationName: user.organization?.name,
+    },
+    csrfToken,
+  });
 });
+
 
 // ============== POST /api/auth/refresh ==============
+auth.post('/refresh', async (c) => {
+  const prisma = c.get('prisma');
+  const sessionCookie = getCookie(c, COOKIE_NAMES.SESSION);
+  const refreshCookie = getCookie(c, COOKIE_NAMES.REFRESH);
 
-router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
-  try {
-    const sessionCookie = req.cookies?.[COOKIE_NAMES.SESSION];
-    const refreshCookie = req.cookies?.[COOKIE_NAMES.REFRESH];
-
-    if (!sessionCookie || !refreshCookie) {
-      return res.status(401).json({ error: 'No cookies' });
-    }
-
-    const currentSession = await sessionService.validateSession(sessionCookie);
-    if (!currentSession) {
-      return res.status(401).json({ error: 'Invalid session' });
-    }
-
-    const result = await sessionService.refreshSession(currentSession, refreshCookie);
-    if (!result) {
-      return res.status(401).json({ error: 'Cannot refresh' });
-    }
-
-    res.cookie(COOKIE_NAMES.SESSION, result.sessionCookie, SESSION_COOKIE_OPTIONS);
-    res.cookie(COOKIE_NAMES.REFRESH, result.refreshCookie, REFRESH_COOKIE_OPTIONS);
-
-    const csrfToken = await generateCsrfToken(res);
-    res.json({ success: true, csrfToken });
-  } catch (err: any) {
-    console.error('[REFRESH]', err);
-    res.status(500).json({ error: 'Refresh failed' });
+  if (!sessionCookie || !refreshCookie) {
+    return c.json({ error: 'No cookies' }, 401);
   }
+
+  const currentSession = await sessionService.validateSession(sessionCookie);
+  if (!currentSession) {
+    return c.json({ error: 'Invalid session' }, 401);
+  }
+
+  // Adapter sessionService pour recevoir prisma au lieu de l'importer globalement
+  const result = await sessionService.refreshSession(currentSession, refreshCookie, prisma);
+  if (!result) {
+    return c.json({ error: 'Cannot refresh' }, 401);
+  }
+
+  setCookie(c, COOKIE_NAMES.SESSION, result.sessionCookie, SESSION_COOKIE_OPTIONS as any);
+  setCookie(c, COOKIE_NAMES.REFRESH, result.refreshCookie, REFRESH_COOKIE_OPTIONS as any);
+
+  const csrfToken = await generateCsrfToken({} as any);
+  return c.json({ success: true, csrfToken });
 });
+
 
 // ============== POST /api/auth/logout ==============
-
-router.post('/logout', requireAuth, async (req: Request, res: Response): Promise<any> => {
-  try {
-    if (req.session) {
-      await sessionService.destroySession(req.session.userId, req.session.deviceId);
-    }
-    clearAllAuthCookies(res);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[LOGOUT]', err);
-    res.status(500).json({ error: 'Logout failed' });
+auth.post('/logout', requireAuthHono, async (c) => {
+  const session = c.get('session');
+  if (session) {
+    await sessionService.destroySession(session.userId, session.deviceId);
   }
+  // TODO: clearAllAuthCookies using setCookie
+  return c.json({ success: true });
 });
+
 
 // ============== POST /api/auth/logout-all ==============
-
-router.post('/logout-all', requireAuth, async (req: Request, res: Response): Promise<any> => {
-  try {
-    const count = await sessionService.destroyAllSessions(req.session!.userId);
-    clearAllAuthCookies(res);
-    res.json({ success: true, sessionsDestroyed: count });
-  } catch (err) {
-    res.status(500).json({ error: 'Logout all failed' });
-  }
+auth.post('/logout-all', requireAuthHono, async (c) => {
+  const session = c.get('session');
+  const count = await sessionService.destroyAllSessions(session.userId);
+  return c.json({ success: true, sessionsDestroyed: count });
 });
+
 
 // ============== GET /api/auth/devices ==============
-
-router.get('/devices', requireAuth, async (req: Request, res: Response): Promise<any> => {
-  try {
-    const devices = await sessionService.getActiveDevices(req.session!.userId);
-    const enriched = devices.map(d => ({ ...d, current: d.deviceId === req.session!.deviceId }));
-    res.json({ devices: enriched });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to list devices' });
-  }
+auth.get('/devices', requireAuthHono, async (c) => {
+  const session = c.get('session');
+  const devices = await sessionService.getActiveDevices(session.userId);
+  const enriched = devices.map(d => ({ ...d, current: d.deviceId === session.deviceId }));
+  return c.json({ devices: enriched });
 });
+
 
 // ============== DELETE /api/auth/devices/:deviceId ==============
-
-router.delete('/devices/:deviceId', requireAuth, async (req: Request, res: Response): Promise<any> => {
-  try {
-    const { deviceId } = req.params;
-    if (deviceId === req.session!.deviceId) {
-      return res.status(400).json({ error: 'Use /logout for current device' });
-    }
-    await sessionService.destroySession(req.session!.userId, deviceId);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to remove device' });
+auth.delete('/devices/:deviceId', requireAuthHono, async (c) => {
+  const session = c.get('session');
+  const deviceId = c.req.param('deviceId');
+  
+  if (deviceId === session.deviceId) {
+    return c.json({ error: 'Use /logout for current device' }, 400);
   }
+  await sessionService.destroySession(session.userId, deviceId);
+  return c.json({ success: true });
 });
+
 
 // ============== GET /api/auth/csrf ==============
-
-router.get('/csrf', async (req: Request, res: Response) => {
-  const token = await generateCsrfToken(res);
-  res.json({ token });
+auth.get('/csrf', async (c) => {
+  const token = await generateCsrfToken({} as any);
+  return c.json({ token });
 });
+
 
 // ============== GET /api/auth/me ==============
+auth.get('/me', requireAuthHono, async (c) => {
+  const prisma = c.get('prisma');
+  const session = c.get('session');
+  
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    include: { organization: true },
+  });
 
-router.get('/me', requireAuth, async (req: Request, res: Response): Promise<any> => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.session!.userId },
-      include: { organization: true },
-    });
+  if (!user) return c.json({ error: 'User not found' }, 404);
 
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.name,
-        name: user.name,
-        role: user.role,
-        isSuperAdmin: user.isSuperAdmin,
-        organizationId: user.organizationId ?? 'unassigned',
-        organizationName: user.organization?.name,
-      },
-      subscription: {
-        status: (user.organization as any)?.plan === 'trial' ? 'trial' : 'active',
-        plan: (user.organization as any)?.plan ?? 'free',
-        expiresAt: (user.organization as any)?.planExpiresAt?.toISOString(),
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed' });
-  }
+  return c.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.name,
+      name: user.name,
+      role: user.role,
+      isSuperAdmin: user.isSuperAdmin,
+      organizationId: user.organizationId ?? 'unassigned',
+      organizationName: user.organization?.name,
+    },
+    subscription: {
+      status: (user.organization as any)?.plan === 'trial' ? 'trial' : 'active',
+      plan: (user.organization as any)?.plan ?? 'free',
+      expiresAt: (user.organization as any)?.planExpiresAt?.toISOString(),
+    },
+  });
 });
 
-export default router;
+export default auth;

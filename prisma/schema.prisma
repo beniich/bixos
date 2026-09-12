@@ -25,18 +25,29 @@ datasource db {
 
 // 1. ORGANIZATIONS (Clients using CAFM Pro)
 model Organization {
-  id           String       @id @default(uuid())
-  name         String
-  code         String       @unique
-  contactEmail String
-  contactPhone String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                   String       @id @default(uuid())
+  name                 String
+  code                 String       @unique
+  contactEmail         String
+  contactPhone         String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
-  users        User[]
-  assets       Asset[]
-  licenses     LicenseKey[]
-  workOrders   WorkOrder[]
+  // Billing & Stripe
+  subscriptionStatus   String       @default("trial")
+  plan                 String       @default("free")
+  billing              String?
+  planExpiresAt        DateTime?
+  trialEndsAt          DateTime?
+  seatsIncluded        Int          @default(5)
+  seatsUsed            Int          @default(0)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+
+  users                User[]
+  assets               Asset[]
+  licenses             LicenseKey[]
+  workOrders           WorkOrder[]
 }
 
 // 2. USERS & ADMINISTRATORS

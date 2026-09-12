@@ -1,77 +1,61 @@
-/**
- * Routes Stripe — /api/billing/*
- * 
- * - POST /api/billing/checkout  → Crée une Checkout Session
- * - POST /api/billing/portal    → Ouvre le Customer Portal Stripe
- * - POST /api/billing/webhook   → Reçoit les événements Stripe (BODY RAW requis)
- */
-import express, { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../auth/jwt';
+import { Hono } from 'hono';
+import { requireAuthHono } from '../auth/middleware';
 import { createCheckoutSession, createPortalSession } from './checkout';
 import { handleStripeWebhook } from './webhook';
 
-const router = express.Router();
-
-// ======= Middleware Auth JWT =======
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token manquant' });
-  }
-  const token = authHeader.slice(7);
-  try {
-    const payload = verifyAccessToken(token) as any;
-    (req as any).uid   = payload.sub || payload.uid;
-    (req as any).orgId = payload.orgId;
-    (req as any).role  = payload.role;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Token invalide ou expiré' });
-  }
-}
+// Hono Stripe Router
+const stripeRouter = new Hono<{ Variables: { prisma: any, session: any } }>();
 
 // ======= POST /api/billing/checkout =======
-// Crée une session de paiement Stripe et retourne l'URL de redirection
-router.post('/checkout', express.json(), requireAuth, (req, res) => createCheckoutSession(req, res));
+stripeRouter.post('/checkout', requireAuthHono, async (c) => {
+  return createCheckoutSession(c);
+});
 
 // ======= POST /api/billing/portal =======
-// Ouvre le portail Stripe pour gérer l'abonnement (cancel, update CB, invoices…)
-router.post('/portal', express.json(), requireAuth, (req, res) => createPortalSession(req, res));
+stripeRouter.post('/portal', requireAuthHono, async (c) => {
+  return createPortalSession(c);
+});
 
 // ======= POST /api/billing/webhook =======
-// ⚠️ CRITIQUE : Ce endpoint reçoit le body RAW (Buffer), pas en JSON.
-// La vérification de signature Stripe nécessite le body brut.
-// Doit être enregistré AVANT express.json() dans server.ts
-router.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  (req, res) => handleStripeWebhook(req, res)
-);
+// Stripe webhook expects RAW body for signature verification.
+stripeRouter.post('/webhook', async (c) => {
+  return handleStripeWebhook(c);
+});
 
 // ======= GET /api/billing/status =======
-// Retourne l'état de l'abonnement de l'organisation (depuis Firestore via auth)
-router.get('/status', requireAuth, async (req: Request, res: Response) => {
+stripeRouter.get('/status', requireAuthHono, async (c) => {
   try {
-    const { adminDb } = await import('../../firebase/firebaseAdmin');
-    const orgId = (req as any).orgId;
-    if (!orgId) return res.status(400).json({ error: 'orgId manquant' });
+    const prisma = c.get('prisma');
+    const session = c.get('session');
+    const orgId = session.organizationId;
+    
+    if (!orgId || orgId === 'unassigned') {
+      return c.json({ error: 'Organization non assignée' }, 400);
+    }
 
-    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-    if (!orgSnap.exists) return res.status(404).json({ error: 'Organisation introuvable' });
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+    });
 
-    const data = orgSnap.data()!;
-    return res.status(200).json({
-      subscriptionStatus: data.subscriptionStatus,
-      plan:               data.plan,
-      planExpiresAt:      data.planExpiresAt,
-      trialEndsAt:        data.trialEndsAt,
-      seatsIncluded:      data.seatsIncluded,
-      seatsUsed:          data.seatsUsed,
-      stripeCustomerId:   data.stripeCustomerId,
+    if (!org) {
+      return c.json({ error: 'Organisation introuvable' }, 404);
+    }
+
+    // Adaptation des champs selon schema.prisma actuel
+    // Note: 'subscriptionStatus' n'est pas dans le schéma Prisma natif par défaut pour Organization,
+    // mais si des champs manquent, il faut s'assurer qu'ils existent ou les extraire de la db.
+    return c.json({
+      subscriptionStatus: (org as any).subscriptionStatus,
+      plan:               (org as any).plan,
+      planExpiresAt:      (org as any).planExpiresAt,
+      trialEndsAt:        (org as any).trialEndsAt,
+      seatsIncluded:      (org as any).seatsIncluded,
+      seatsUsed:          (org as any).seatsUsed,
+      stripeCustomerId:   (org as any).stripeCustomerId,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
 
-export default router;
+export default stripeRouter;

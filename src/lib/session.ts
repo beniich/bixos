@@ -1,6 +1,5 @@
 import { sealData, unsealData } from 'iron-session';
 import { redis } from './upstash';
-import { prisma } from '../prisma';
 
 const SESSION_PASSWORD = process.env.SESSION_PASSWORD!;
 if (!SESSION_PASSWORD) throw new Error('❌ SESSION_PASSWORD missing in .env');
@@ -137,7 +136,8 @@ class SessionService {
 
   async refreshSession(
     oldSession: SessionData,
-    encryptedRefresh: string
+    encryptedRefresh: string,
+    prisma: any
   ): Promise<{ sessionCookie: string; refreshCookie: string } | null> {
     try {
       const refreshData = await unsealData<RefreshData>(encryptedRefresh, {

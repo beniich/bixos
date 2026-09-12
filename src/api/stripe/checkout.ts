@@ -1,62 +1,51 @@
-/**
- * POST /api/billing/checkout
- * Crée une Stripe Checkout Session pour un plan donné.
- * 
- * Body: { planId: 'pro', billing: 'monthly' }
- * Headers: Authorization: Bearer <jwt_token>
- * 
- * Retourne: { url: 'https://checkout.stripe.com/...' }
- */
-import type { Request, Response } from 'express';
 import { stripe, STRIPE_PRICE_IDS } from './stripeClient';
-import { adminDb } from '../../firebase/firebaseAdmin';
 
-export async function createCheckoutSession(req: Request, res: Response) {
+export async function createCheckoutSession(c: any) {
   try {
-    const { planId, billing = 'monthly' } = req.body;
+    const prisma = c.get('prisma');
+    const sessionCookie = c.get('session');
+    const { planId, billing = 'monthly' } = await c.req.json();
     
-    // Récupère l'utilisateur authentifié depuis le middleware JWT
-    const uid = (req as any).uid as string;
-    const orgId = (req as any).orgId as string;
+    const uid = sessionCookie.userId;
+    const orgId = sessionCookie.organizationId;
 
-    if (!uid || !orgId) {
-      return res.status(401).json({ error: 'Non authentifié' });
+    if (!uid || !orgId || orgId === 'unassigned') {
+      return c.json({ error: 'Non authentifié ou organisation manquante' }, 401);
     }
 
-    // Validation du plan
     const priceKey = `${planId}_${billing}`;
-    const priceId = STRIPE_PRICE_IDS[priceKey];
+    const priceId = STRIPE_PRICE_IDS[priceKey as keyof typeof STRIPE_PRICE_IDS];
     if (!priceId) {
-      return res.status(400).json({ error: `Plan invalide: ${priceKey}` });
+      return c.json({ error: `Plan invalide: ${priceKey}` }, 400);
     }
 
-    // Récupère ou crée le Stripe Customer pour cette organisation
-    const orgRef = adminDb.collection('organizations').doc(orgId);
-    const orgSnap = await orgRef.get();
-    const orgData = orgSnap.data() || {};
+    const org = await prisma.organization.findUnique({ where: { id: orgId } });
+    if (!org) {
+      return c.json({ error: 'Organisation introuvable' }, 404);
+    }
 
-    let customerId: string = orgData.stripeCustomerId;
+    let customerId = (org as any).stripeCustomerId;
 
     if (!customerId) {
-      // Récupère l'email de l'utilisateur pour créer le client Stripe
-      const userSnap = await adminDb.collection('users').doc(uid).get();
-      const userData = userSnap.data() || {};
-
+      const user = await prisma.user.findUnique({ where: { id: uid } });
       const customer = await stripe.customers.create({
-        email: userData.email || '',
-        name: orgData.name || '',
+        email: user?.email || '',
+        name: org.name || '',
         metadata: {
           orgId,
           createdBy: uid,
         },
       });
       customerId = customer.id;
-
-      // Sauvegarde l'ID Stripe dans Firestore
-      await orgRef.update({ stripeCustomerId: customerId });
+      
+      // Update Prisma organization with Stripe customer id
+      // Requires adding stripeCustomerId to Prisma schema if missing
+      await prisma.organization.update({
+        where: { id: orgId },
+        data: { stripeCustomerId: customerId } as any,
+      });
     }
 
-    // Crée la Checkout Session Stripe
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
@@ -74,34 +63,32 @@ export async function createCheckoutSession(req: Request, res: Response) {
       },
       subscription_data: {
         metadata: { orgId, planId, billing },
-        trial_period_days: 0, // Trial déjà géré côté app
+        trial_period_days: 0,
       },
     });
 
-    return res.status(200).json({ url: session.url });
+    return c.json({ url: session.url }, 200);
 
   } catch (error: any) {
     console.error('[Stripe Checkout]', error);
-    return res.status(500).json({ error: error.message || 'Erreur serveur Stripe' });
+    return c.json({ error: error.message || 'Erreur serveur Stripe' }, 500);
   }
 }
 
-/**
- * POST /api/billing/portal
- * Crée une session Stripe Customer Portal pour gérer l'abonnement (annulation, mise à jour CB, etc.)
- */
-export async function createPortalSession(req: Request, res: Response) {
+export async function createPortalSession(c: any) {
   try {
-    const uid = (req as any).uid as string;
-    const orgId = (req as any).orgId as string;
+    const prisma = c.get('prisma');
+    const sessionCookie = c.get('session');
+    const uid = sessionCookie.userId;
+    const orgId = sessionCookie.organizationId;
 
-    if (!uid || !orgId) return res.status(401).json({ error: 'Non authentifié' });
+    if (!uid || !orgId) return c.json({ error: 'Non authentifié' }, 401);
 
-    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-    const customerId = orgSnap.data()?.stripeCustomerId;
+    const org = await prisma.organization.findUnique({ where: { id: orgId } });
+    const customerId = (org as any)?.stripeCustomerId;
 
     if (!customerId) {
-      return res.status(404).json({ error: 'Aucun abonnement Stripe trouvé pour cette organisation' });
+      return c.json({ error: 'Aucun abonnement Stripe trouvé' }, 404);
     }
 
     const session = await stripe.billingPortal.sessions.create({
@@ -109,10 +96,10 @@ export async function createPortalSession(req: Request, res: Response) {
       return_url: `${process.env.VITE_APP_URL || 'http://localhost:5173'}/settings`,
     });
 
-    return res.status(200).json({ url: session.url });
+    return c.json({ url: session.url }, 200);
 
   } catch (error: any) {
     console.error('[Stripe Portal]', error);
-    return res.status(500).json({ error: error.message });
+    return c.json({ error: error.message }, 500);
   }
 }

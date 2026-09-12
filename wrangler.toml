@@ -1,13 +1,18 @@
 # wrangler.toml — Worker bixos avec assets statiques et API Hono
 
 name = "bixos"
-main = "dist/server.mjs"
+main = "server.ts"
 compatibility_date = "2026-09-10"
 compatibility_flags = ["nodejs_compat"]
 
-# Build Vite + esbuild avant le déploiement
+# Build : prisma generate + Vite frontend
+# Wrangler bundle server.ts automatiquement (pas besoin d'esbuild)
 [build]
-command = "npm run build"
+command = "npx prisma generate && vite build"
+
+# Résolution du client Prisma généré pour le bundler Wrangler
+[alias]
+".prisma/client/default" = "node_modules/.prisma/client/default"
 
 # Assets statiques (build Vite → dist/)
 [assets]
