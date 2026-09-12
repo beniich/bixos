@@ -13,6 +13,7 @@ import notificationsRouter from './src/api/notifications/routes';
 
 type Bindings = {
   DB: D1Database;
+  ASSETS: { fetch: typeof fetch };
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -44,6 +45,18 @@ app.get('/api/health', (c) => {
 app.route('/api/auth', authRouter as any);
 app.route('/api/billing', stripeRouter as any);
 app.route('/api/notifications', notificationsRouter as any);
+
+// SPA Routing: Pour toutes les requêtes GET qui ne sont pas des API, 
+// on renvoie l'index.html de l'application React pour laisser le routeur client gérer la page.
+app.get('*', async (c) => {
+  if (c.req.path.startsWith('/api/')) {
+    return c.notFound();
+  }
+  // Renvoie index.html depuis les assets statiques
+  const url = new URL(c.req.url);
+  url.pathname = '/';
+  return c.env.ASSETS.fetch(new Request(url.toString(), c.req.raw));
+});
 
 // Export default for Cloudflare Workers
 export default app;
