@@ -6,13 +6,13 @@ compatibility_date = "2026-09-10"
 compatibility_flags = ["nodejs_compat"]
 
 # Build : prisma generate + Vite frontend
-# Wrangler bundle server.ts automatiquement (pas besoin d'esbuild)
+# Wrangler bundle server.ts automatiquement
 [build]
 command = "npx prisma generate && vite build"
 
-# Résolution du client Prisma généré pour le bundler Wrangler
+# Résolution du client Prisma généré localement
 [alias]
-".prisma/client/default" = "node_modules/.prisma/client/default"
+".prisma/client/default" = "./src/generated/prisma/default"
 
 # Assets statiques (build Vite → dist/)
 [assets]

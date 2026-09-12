@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 
 // Prisma + D1
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './src/generated/prisma';
 import { PrismaD1 } from '@prisma/adapter-d1';
 
 type Bindings = {
