@@ -1,51 +1,40 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../auth/jwt';
+import { Hono } from 'hono';
+import { requireAuthHono } from '../auth/middleware';
 import { notificationService } from './service';
 
-const router = express.Router();
+const notificationsRouter = new Hono<{ Variables: { prisma: any, session: any } }>();
 
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token manquant' });
-  }
-  const token = authHeader.slice(7);
+notificationsRouter.post('/mark-as-read', requireAuthHono, async (c) => {
   try {
-    const payload = verifyAccessToken(token) as any;
-    (req as any).uid   = payload.sub || payload.uid;
-    (req as any).orgId = payload.orgId;
-    (req as any).role  = payload.role;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Token invalide ou expiré' });
-  }
-}
+    const prisma = c.get('prisma');
+    const session = c.get('session');
+    const { notifId } = await c.req.json();
+    
+    const orgId = session.organizationId;
+    const userId = session.userId;
 
-router.post('/mark-as-read', express.json(), requireAuth, async (req, res) => {
-  try {
-    const { notifId } = req.body;
-    const orgId = (req as any).orgId;
-    const userId = (req as any).uid;
+    if (!notifId) return c.json({ error: 'notifId manquant' }, 400);
 
-    if (!notifId) return res.status(400).json({ error: 'notifId manquant' });
-
-    await notificationService.markAsRead(orgId, userId, notifId);
-    return res.json({ success: true });
+    await notificationService.markAsRead(orgId, userId, notifId, prisma);
+    return c.json({ success: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
 
-router.post('/mark-all-as-read', express.json(), requireAuth, async (req, res) => {
+notificationsRouter.post('/mark-all-as-read', requireAuthHono, async (c) => {
   try {
-    const orgId = (req as any).orgId;
-    const userId = (req as any).uid;
+    const prisma = c.get('prisma');
+    const session = c.get('session');
+    
+    const orgId = session.organizationId;
+    const userId = session.userId;
 
-    await notificationService.markAllAsRead(orgId, userId);
-    return res.json({ success: true });
+    await notificationService.markAllAsRead(orgId, userId, prisma);
+    return c.json({ success: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return c.json({ error: err.message }, 500);
   }
 });
 
-export default router;
+export default notificationsRouter;

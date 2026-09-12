@@ -77,6 +77,8 @@ model User {
   mustChangePassword Boolean       @default(false)
   deletedAt          DateTime?     // Soft delete
 
+  unreadNotificationsCount Int     @default(0)
+  notifications      Notification[]
   assignedWorkOrders WorkOrder[]   @relation("AssignedTechnician")
   sessions           Session[]
   gmailConfig        GmailConfig?
@@ -352,4 +354,29 @@ model TwoFactorSecret {
   updatedAt           DateTime  @updatedAt
 
   @@index([userId])
+}
+
+// 12. NOTIFICATIONS
+model Notification {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  type           String    // SYSTEM, ALERT, WORK_ORDER, MESSAGE
+  priority       String    @default("low") // low, medium, high, urgent
+  title          String
+  message        String
+  resourceType   String?
+  resourceId     String?
+  actionUrl      String?
+  data           String?   // JSON string
+  channels       String    @default("in_app") // JSON array string
+  isRead         Boolean   @default(false)
+  isArchived     Boolean   @default(false)
+  groupKey       String?
+  count          Int       @default(1)
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime?
+  readAt         DateTime?
+  updatedAt      DateTime  @updatedAt
 }

@@ -6,6 +6,11 @@ import { secureHeaders } from 'hono/secure-headers';
 import { PrismaClient } from './src/generated/prisma';
 import { PrismaD1 } from '@prisma/adapter-d1';
 
+// Routers
+import authRouter from './src/api/auth/routes';
+import stripeRouter from './src/api/stripe/routes';
+import notificationsRouter from './src/api/notifications/routes';
+
 type Bindings = {
   DB: D1Database;
 };
@@ -34,6 +39,11 @@ app.use('*', async (c, next) => {
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', environment: 'Cloudflare Workers (Hono + D1)' });
 });
+
+// Mount modules
+app.route('/api/auth', authRouter as any);
+app.route('/api/billing', stripeRouter as any);
+app.route('/api/notifications', notificationsRouter as any);
 
 // Export default for Cloudflare Workers
 export default app;
